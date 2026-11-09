@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 620" width="1000" height="620" role="img" aria-label="Le parcours d'un sujet jusqu'à la vidéo, avec trois validations humaines">
+  <style>
+    text { font-family: "Segoe UI", Helvetica, Arial, sans-serif; fill: #1d2b3a; }
+    .titre { font-size: 17px; font-weight: 600; }
+    .sous { font-size: 13px; fill: #4a5a6a; }
+    .cmd { font-family: Consolas, "SF Mono", Menlo, monospace; font-size: 12px; fill: #2f6f9f; }
+    .val { font-size: 15px; font-weight: 700; fill: #7a4a00; }
+    .val2 { font-size: 12.5px; fill: #7a4a00; }
+    .etape { fill: #eef4fa; stroke: #9db7cf; stroke-width: 1.5; }
+    .valid { fill: #fff3d6; stroke: #e0a92e; stroke-width: 2; }
+    .sortie { fill: #e4f4e6; stroke: #79b583; stroke-width: 2; }
+    .option { fill: #f5f5f5; stroke: #aaa; stroke-width: 1.5; stroke-dasharray: 6 5; }
+    .fl { fill: none; stroke: #6b7f93; stroke-width: 2; marker-end: url(#f); }
+  </style>
+  <defs><marker id="f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#6b7f93"/></marker></defs>
+  <rect width="1000" height="620" fill="#ffffff"/>
+
+  <!-- ligne 1 -->
+  <rect class="sortie" x="30" y="30" width="150" height="86" rx="12"/>
+  <text class="titre" x="105" y="66" text-anchor="middle">Un sujet</text>
+  <text class="sous" x="105" y="90" text-anchor="middle">une seule phrase</text>
+  <path class="fl" d="M180 73H218"/>
+
+  <rect class="etape" x="222" y="30" width="200" height="86" rx="12"/>
+  <text class="titre" x="322" y="60" text-anchor="middle">Recherche</text>
+  <text class="sous" x="322" y="82" text-anchor="middle">chaque fait, 2 sources</text>
+  <text class="cmd" x="322" y="103" text-anchor="middle">sources.md</text>
+  <path class="fl" d="M422 73H460"/>
+
+  <rect class="etape" x="464" y="30" width="200" height="86" rx="12"/>
+  <text class="titre" x="564" y="60" text-anchor="middle">Script</text>
+  <text class="sous" x="564" y="82" text-anchor="middle">un narrateur, des émotions</text>
+  <text class="cmd" x="564" y="103" text-anchor="middle">script.md</text>
+  <path class="fl" d="M664 73H702"/>
+
+  <rect class="valid" x="706" y="30" width="264" height="86" rx="12"/>
+  <text class="val" x="838" y="62" text-anchor="middle">Validation 1 : le texte</text>
+  <text class="val2" x="838" y="86" text-anchor="middle">Rien n'est généré avant ce oui</text>
+
+  <path class="fl" d="M838 116V150H130V180"/>
+
+  <!-- ligne 2 -->
+  <rect class="etape" x="30" y="184" width="200" height="86" rx="12"/>
+  <text class="titre" x="130" y="214" text-anchor="middle">Découpage</text>
+  <text class="sous" x="130" y="236" text-anchor="middle">le script, plan par plan</text>
+  <text class="cmd" x="130" y="257" text-anchor="middle">fabriquer.py blocs</text>
+  <path class="fl" d="M230 227H268"/>
+
+  <rect class="etape" x="272" y="184" width="230" height="86" rx="12"/>
+  <text class="titre" x="387" y="214" text-anchor="middle">Images clés + 30 s de voix</text>
+  <text class="sous" x="387" y="236" text-anchor="middle">intro, titre et fin inclus</text>
+  <text class="cmd" x="387" y="257" text-anchor="middle">voix --seulement b02</text>
+  <path class="fl" d="M502 227H540"/>
+
+  <rect class="valid" x="544" y="184" width="426" height="86" rx="12"/>
+  <text class="val" x="757" y="216" text-anchor="middle">Validation 2 : la planche et l'extrait de voix</text>
+  <text class="val2" x="757" y="240" text-anchor="middle">Une seule image à regarder, 30 secondes à écouter</text>
+
+  <path class="fl" d="M757 270V304H130V334"/>
+
+  <!-- ligne 3 -->
+  <rect class="etape" x="30" y="338" width="200" height="86" rx="12"/>
+  <text class="titre" x="130" y="368" text-anchor="middle">Toute la voix</text>
+  <text class="sous" x="130" y="390" text-anchor="middle">3 prises, la meilleure gardée</text>
+  <text class="cmd" x="130" y="411" text-anchor="middle">voix · choisir · nettoyer</text>
+  <path class="fl" d="M230 381H268"/>
+
+  <rect class="etape" x="272" y="338" width="200" height="86" rx="12"/>
+  <text class="titre" x="372" y="368" text-anchor="middle">Montage</text>
+  <text class="sous" x="372" y="390" text-anchor="middle">zooms, titres, son</text>
+  <text class="cmd" x="372" y="411" text-anchor="middle">plan · montage · finir</text>
+  <path class="fl" d="M472 381H510"/>
+
+  <rect class="etape" x="514" y="338" width="170" height="86" rx="12"/>
+  <text class="titre" x="599" y="368" text-anchor="middle">Contrôle</text>
+  <text class="sous" x="599" y="390" text-anchor="middle">voix, niveaux, durées</text>
+  <text class="cmd" x="599" y="411" text-anchor="middle">verifier</text>
+  <path class="fl" d="M684 381H722"/>
+
+  <rect class="valid" x="726" y="338" width="244" height="86" rx="12"/>
+  <text class="val" x="848" y="370" text-anchor="middle">Validation 3 : la vidéo</text>
+  <text class="val2" x="848" y="394" text-anchor="middle">Montée avec les images fixes</text>
+
+  <path class="fl" d="M848 424V458H599V488"/>
+  <path class="fl" d="M848 458H300V488" stroke-dasharray="6 5"/>
+
+  <!-- ligne 4 -->
+  <rect class="option" x="130" y="492" width="340" height="96" rx="12"/>
+  <text class="titre" x="300" y="526" text-anchor="middle">En option : animations</text>
+  <text class="sous" x="300" y="548" text-anchor="middle">seulement si vous les demandez</text>
+  <text class="cmd" x="300" y="571" text-anchor="middle">animer, puis plan et montage</text>
+
+  <rect class="sortie" x="514" y="492" width="456" height="96" rx="12"/>
+  <text class="titre" x="742" y="526" text-anchor="middle">Une vidéo prête à publier</text>
+  <text class="sous" x="742" y="548" text-anchor="middle">Miniature, textes et Shorts, puis</text>
+  <text class="sous" x="742" y="570" text-anchor="middle">une dernière confirmation humaine avant toute publication</text>
+</svg>

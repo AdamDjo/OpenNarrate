@@ -1,0 +1,45 @@
+{
+ "_info": "Réglages réels de l'exemple des pyramides. Voir Docs/son_et_montage.md.",
+ "narrateur": "nefret",
+ "langue": "fr",
+ "prononciation": {"Néfret": "Néfrète", "Merer": "Mérère", "Gizeh": "Guizèh"},
+ "theme_titres": {
+  "police": "Polices/Cinzel.ttf", "casse": "telle_quelle",
+  "couleur": [252, 240, 214], "couleur_sous": [150, 226, 222], "contour": [18, 34, 62],
+  "ouverture": {"taille": 130, "y": 300, "taille_sous": 50, "y_sous": 380},
+  "chapitre": {"taille": 72, "y": 190},
+  "fin": {"taille": 100, "y": 260, "taille_sous": 44, "y_sous": 335}
+ },
+
+ "alias": {
+  "F1": "images/F1_sable.png",
+  "F3": "images/F3_titre.png",
+  "F4": "images/F4_aube.png",
+  "V01": "images/V01_blanche.png",
+  "V02": "images/V02_traineau.png",
+  "C01": "images/C01_carte.png",
+  "V03": "images/V03_mystere.png"
+ },
+ "centres": {"F1": [0.42, 0.42], "F4": [0.5, 0.5]},
+ "blocs": {
+  "1": ["F1"],
+  "2": ["V01"],
+  "3": ["V02"],
+  "4": ["C01"],
+  "5": ["V03"],
+  "6": ["F4"]
+ },
+
+ "animations": {},
+ "chocs": [],
+
+ "titre_apres_bloc": 2,
+ "titre_ouverture": {"grand": "Les pyramides", "petit": "Ceux qui les ont bâties"},
+ "chapitres_sans_titre": ["2. La fin"],
+ "ecran_fin": {"duree": 8, "texte": "Abonne-toi", "sous": "Le pain reste au chaud"},
+ "ecarts_min": {},
+
+ "musiques": [],
+ "feu_passages": [],
+ "bruitages": []
+}

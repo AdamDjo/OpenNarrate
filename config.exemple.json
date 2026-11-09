@@ -1,0 +1,11 @@
+{
+ "_info": "Copier en config.json et adapter à ce PC. Laisser une valeur vide pour la chercher automatiquement.",
+ "ffmpeg": "",
+ "ffprobe": "",
+ "python_voix": "",
+ "python_outils": "",
+ "police_titres": "",
+ "police_phrase": "",
+ "comfy_url": "http://127.0.0.1:8188",
+ "comfy_entree": "C:/chemin/vers/ComfyUI/input"
+}

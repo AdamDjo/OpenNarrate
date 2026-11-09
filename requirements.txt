@@ -1,0 +1,7 @@
+# Voix et contrôle. PyTorch : installer la version adaptée à votre carte NVIDIA.
+chatterbox-tts==0.1.7
+torch
+torchaudio
+faster-whisper
+numpy
+Pillow

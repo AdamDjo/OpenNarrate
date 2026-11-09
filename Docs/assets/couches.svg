@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 220" width="1000" height="220" role="img" aria-label="Les quatre couches d'images et leur transition">
+  <style>
+    text { font-family: "Segoe UI", Helvetica, Arial, sans-serif; fill: #1d2b3a; }
+    .t { font-size: 18px; font-weight: 700; }
+    .d { font-size: 13.5px; fill: #3f4f5f; }
+    .m { font-size: 12.5px; fill: #5a6a7a; font-style: italic; }
+  </style>
+  <rect width="1000" height="220" fill="#ffffff"/>
+  <rect x="20" y="24" width="225" height="172" rx="12" fill="#fff0dd" stroke="#e3a763" stroke-width="1.5"/>
+  <text class="t" x="132" y="62" text-anchor="middle">FEU</text>
+  <text class="d" x="132" y="96" text-anchor="middle">Le narrateur à l'écran,</text>
+  <text class="d" x="132" y="116" text-anchor="middle">dans son propre décor</text>
+  <text class="m" x="132" y="166" text-anchor="middle">transition : fondu</text>
+  <rect x="265" y="24" width="225" height="172" rx="12" fill="#eaeef3" stroke="#a5b2c1" stroke-width="1.5"/>
+  <text class="t" x="377" y="62" text-anchor="middle">VISION</text>
+  <text class="d" x="377" y="96" text-anchor="middle">Le passé qu'il raconte,</text>
+  <text class="d" x="377" y="116" text-anchor="middle">bords perdus dans la brume</text>
+  <text class="m" x="377" y="166" text-anchor="middle">transition : fondu long</text>
+  <rect x="510" y="24" width="225" height="172" rx="12" fill="#e4f1e6" stroke="#8fbd97" stroke-width="1.5"/>
+  <text class="t" x="622" y="62" text-anchor="middle">MONDE</text>
+  <text class="d" x="622" y="96" text-anchor="middle">Ce qui existe aujourd'hui,</text>
+  <text class="d" x="622" y="116" text-anchor="middle">au plus près du réel</text>
+  <text class="m" x="622" y="166" text-anchor="middle">transition : fondu</text>
+  <rect x="755" y="24" width="225" height="172" rx="12" fill="#f6efdc" stroke="#c9b27a" stroke-width="1.5"/>
+  <text class="t" x="867" y="62" text-anchor="middle">CARNET</text>
+  <text class="d" x="867" y="96" text-anchor="middle">Cartes et explications,</text>
+  <text class="d" x="867" y="116" text-anchor="middle">encre sur parchemin</text>
+  <text class="m" x="867" y="166" text-anchor="middle">transition : page qui glisse</text>
+</svg>

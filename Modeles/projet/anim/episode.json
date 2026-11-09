@@ -1,0 +1,7 @@
+{
+ "_info": "Plans à animer avec Wan 2.2 (832x480, 81 images = 5 s). image_fin = image de début pour une boucle. Règles : Docs/images.md.",
+ "plans": [
+  {"nom": "boucle_ambiance", "image": "F1.png", "image_fin": "F1.png", "largeur": 832, "hauteur": 480, "images_video": 81, "seed": 1001,
+   "animation": "<style de l'univers>. A still, peaceful scene. The character sits still with his hands resting on his knees, his arms and head do not move, he only breathes very gently. All the movement is in the atmosphere: the fire flames dance and embers rise, the stars twinkle, the clouds drift slowly, the distant lights glimmer softly, a light breeze moves the grass. The camera is locked and perfectly still. Smooth, subtle, natural animation, no morphing."}
+ ]
+}

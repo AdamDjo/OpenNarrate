@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 470" width="1000" height="470" role="img" aria-label="Quels fichiers d'un projet alimentent quelle étape">
+  <style>
+    text { font-family: "Segoe UI", Helvetica, Arial, sans-serif; fill: #1d2b3a; }
+    .ent { font-size: 15px; font-weight: 700; }
+    .f { font-family: Consolas, "SF Mono", Menlo, monospace; font-size: 14px; font-weight: 600; fill: #1d2b3a; }
+    .d { font-size: 12.5px; fill: #4a5a6a; }
+    .boite { fill: #eef4fa; stroke: #9db7cf; stroke-width: 1.5; }
+    .auto { fill: #f4eefa; stroke: #b39dcf; stroke-width: 1.5; }
+    .out { fill: #e4f4e6; stroke: #79b583; stroke-width: 2; }
+    .fl { fill: none; stroke: #6b7f93; stroke-width: 2; marker-end: url(#f); }
+  </style>
+  <defs><marker id="f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#6b7f93"/></marker></defs>
+  <rect width="1000" height="470" fill="#ffffff"/>
+
+  <text class="ent" x="140" y="30" text-anchor="middle">Écrit par Claude, relu par vous</text>
+  <text class="ent" x="500" y="30" text-anchor="middle">Calculé par les outils</text>
+  <text class="ent" x="860" y="30" text-anchor="middle">Résultat</text>
+
+  <rect class="boite" x="30" y="50" width="220" height="74" rx="10"/>
+  <text class="f" x="140" y="80" text-anchor="middle">sources.md</text>
+  <text class="d" x="140" y="103" text-anchor="middle">les faits et leurs 2 sources</text>
+
+  <rect class="boite" x="30" y="144" width="220" height="74" rx="10"/>
+  <text class="f" x="140" y="174" text-anchor="middle">script.md</text>
+  <text class="d" x="140" y="197" text-anchor="middle">le texte, les plans, les émotions</text>
+
+  <rect class="boite" x="30" y="238" width="220" height="74" rx="10"/>
+  <text class="f" x="140" y="268" text-anchor="middle">images/</text>
+  <text class="d" x="140" y="291" text-anchor="middle">générées, validées sur planche</text>
+
+  <rect class="boite" x="30" y="332" width="220" height="74" rx="10"/>
+  <text class="f" x="140" y="362" text-anchor="middle">montage_images.json</text>
+  <text class="d" x="140" y="385" text-anchor="middle">thème, images, musiques, fin</text>
+
+  <rect class="auto" x="390" y="144" width="220" height="74" rx="10"/>
+  <text class="f" x="500" y="174" text-anchor="middle">blocs.json</text>
+  <text class="d" x="500" y="197" text-anchor="middle">le script découpé</text>
+
+  <rect class="auto" x="390" y="238" width="220" height="74" rx="10"/>
+  <text class="f" x="500" y="268" text-anchor="middle">voix/narration/*.wav</text>
+  <text class="d" x="500" y="291" text-anchor="middle">une voix par bloc</text>
+
+  <rect class="auto" x="390" y="332" width="220" height="74" rx="10"/>
+  <text class="f" x="500" y="362" text-anchor="middle">episode.json</text>
+  <text class="d" x="500" y="385" text-anchor="middle">le montage calculé</text>
+
+  <rect class="out" x="750" y="285" width="220" height="74" rx="10"/>
+  <text class="f" x="860" y="315" text-anchor="middle">A_publier/*.mp4</text>
+  <text class="d" x="860" y="338" text-anchor="middle">vidéo + aperçu 720p</text>
+
+  <path class="fl" d="M140 124V140"/>
+  <path class="fl" d="M250 181H386"/>
+  <path class="fl" d="M500 218V234"/>
+  <path class="fl" d="M500 312V328"/>
+  <path class="fl" d="M250 369H386"/>
+  <path class="fl" d="M250 285C320 285 340 350 386 356"/>
+  <path class="fl" d="M610 369C680 369 700 330 746 324"/>
+</svg>

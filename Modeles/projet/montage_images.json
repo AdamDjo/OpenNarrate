@@ -1,0 +1,36 @@
+{
+ "_info": "Tous les réglages de cette vidéo. Chemins relatifs au dossier du projet. Voir Docs/workflow.md et Docs/son_et_montage.md.",
+ "narrateur": "nom_du_narrateur",
+ "langue": "fr",
+ "prononciation": {},
+ "theme_titres": {"police": "Polices/A_CHOISIR_SELON_LE_SUJET.ttf", "casse": "telle_quelle", "couleur": [255, 255, 255], "couleur_sous": [255, 255, 255], "contour": [0, 0, 0]},
+
+ "alias": {
+  "F1": "images/F1_narrateur_assis.png",
+  "F2": "images/F2_gros_plan.png",
+  "F3": "images/F3_image_du_titre.png",
+  "V01": "images/V01_premiere_vision.png"
+ },
+ "centres": {"F1": [0.3, 0.42]},
+ "blocs": {
+  "2": ["F3", "F1"],
+  "3": ["V01"]
+ },
+
+ "animations": {},
+ "chocs": [],
+
+ "titre_apres_bloc": 3,
+ "titre_ouverture": {"grand": "LE SUJET", "petit": "Une phrase qui donne envie"},
+ "ecran_fin": {"duree": 15, "texte": "ABONNE-TOI", "sous": "Une phrase courte"},
+ "ecarts_min": {},
+
+ "musiques": [
+  {"fichier": "piano.mp3", "de_bloc": 3, "a_bloc": 9}
+ ],
+ "feu_fichier": "feu_reel.mp3",
+ "feu_passages": [
+  {"bloc": 2, "dt": 0.0, "duree": 10, "volume": 0.12}
+ ],
+ "bruitages": []
+}

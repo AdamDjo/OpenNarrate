@@ -1,0 +1,56 @@
+[
+ {
+  "n": 1,
+  "chapitre": "0. L'ouverture",
+  "couche": "FEU",
+  "desc": "Néfret assise sur le sable au pied de la Grande Pyramide au crépuscule, une lampe à huile allumée, des pains sur une natte.",
+  "texte": "{neutre} Approche, assieds-toi près de la lampe, le sable est encore tiède. Je m'appelle Néfret, je faisais le pain des ouvriers, et je regarde ces pierres depuis quatre mille cinq cents ans.",
+  "silence_apres": 0.0,
+  "mots": 32
+ },
+ {
+  "n": 2,
+  "chapitre": "0. L'ouverture",
+  "couche": "VISION",
+  "desc": "La Grande Pyramide toute neuve, couverte de calcaire blanc éclatant sous le soleil.",
+  "texte": "{confidence} La Grande Pyramide a été bâtie pour le roi Khéops. Pendant plus de trois mille ans, rien sur Terre n'a été construit plus haut.",
+  "silence_apres": 0.0,
+  "mots": 25
+ },
+ {
+  "n": 3,
+  "chapitre": "1. Ceux qui l'ont bâtie",
+  "couche": "VISION",
+  "desc": "Des ouvriers tirent un énorme bloc sur un traîneau de bois, avec des cordes.",
+  "texte": "{neutre} On raconte souvent que des esclaves l'ont élevée, pourtant les archéologues ont retrouvé les tombes des ouvriers, enterrés tout près de la pyramide de leur roi.",
+  "silence_apres": 0.0,
+  "mots": 27
+ },
+ {
+  "n": 4,
+  "chapitre": "1. Ceux qui l'ont bâtie",
+  "couche": "CARNET",
+  "desc": "Une carte à l'encre sur parchemin du Nil, avec de petites barques et une pyramide dessinée, sans aucun texte.",
+  "texte": "{confidence} En deux mille treize, au bord de la mer Rouge, on a même retrouvé le journal d'un inspecteur nommé Merer. Il y notait ses voyages sur le Nil, quand il livrait du calcaire à Gizeh.",
+  "silence_apres": 0.0,
+  "mots": 36
+ },
+ {
+  "n": 5,
+  "chapitre": "1. Ceux qui l'ont bâtie",
+  "couche": "VISION",
+  "desc": "Une pyramide à moitié construite au crépuscule, de minuscules ouvriers avec des torches, le sommet perdu dans la brume.",
+  "texte": "{emerveillement} Pourtant, personne ne sait encore avec certitude comment ils ont hissé tous ces blocs si haut.",
+  "silence_apres": 0.0,
+  "mots": 17
+ },
+ {
+  "n": 6,
+  "chapitre": "2. La fin",
+  "couche": "FEU",
+  "desc": "Néfret debout de dos sur le sable à l'aube, face aux pyramides.",
+  "texte": "{neutre} Le matin, quand le soleil touche la pointe, je pense à eux, et je garde le pain au chaud. | Si ces histoires te plaisent, abonne-toi, et reviens t'asseoir près de la lampe.",
+  "silence_apres": 0.0,
+  "mots": 33
+ }
+]

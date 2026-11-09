@@ -1,0 +1,15 @@
+# Réglages de chaque PC
+config.json
+__pycache__/
+
+# Vos contenus : ils ne font pas partie du dépôt
+Episodes/*
+!Episodes/README.md
+A_publier/*
+!A_publier/README.md
+Narrateurs/*
+!Narrateurs/README.md
+Musique/**/*.mp3
+Musique/**/*.wav
+Polices/*.ttf
+Polices/*.otf
