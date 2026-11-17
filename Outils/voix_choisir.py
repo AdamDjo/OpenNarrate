@@ -1,7 +1,7 @@
 """Étape 2/2 de la voix : réécoute chaque prise (faster-whisper), garde la plus fidèle au texte, assemble.
 
 Usage (Python 3.12 du système, qui a faster-whisper) :
-  python -I Outils\\voix_choisir.py <dossier_sortie> [--vitesse 0.92] [nom1 nom2 ...]
+  python -I Outils\\voix\\voix_choisir.py <dossier_sortie> [--vitesse 0.92] [nom1 nom2 ...]
 Pour chaque <dossier_sortie>/<nom>/plan.json :
   - transcrit toutes les prises, note la ressemblance avec le texte (0 à 1) et le débit (mots/s) ;
   - garde la meilleure prise ; ⚠️ si ressemblance < 0.80 ou débit anormal (> 3.6 ou < 1.3 mots/s) ;
@@ -74,16 +74,20 @@ for nom in noms:
         for f in sorted(d.glob(f"c{i:02d}_p*.wav")):
             audio = lire16k(f)
             cle = f"{f.name}:{f.stat().st_mtime_ns}"
-            if cle not in cache:
-                segs, _ = modele.transcribe(audio, language=plan.get("langue", "fr"))
+            if cle not in cache or f"{cle}:debut" not in cache:
+                segs = list(modele.transcribe(audio, language=plan.get("langue", "fr"), word_timestamps=True)[0])
                 cache[cle] = " ".join(s.text for s in segs)
+                cache[f"{cle}:fin"] = max((w.end for s in segs for w in (s.words or [])), default=None)
+                cache[f"{cle}:debut"] = min((w.start for s in segs for w in (s.words or [])), default=None)
             entendu = cache[cle]
+            fin_mots, debut_mots = cache[f"{cle}:fin"], cache[f"{cle}:debut"]
             score = difflib.SequenceMatcher(None, attendu, norme(entendu)).ratio()
             debit = len(m["texte"].split()) / max(len(audio) / 16000, 0.1)
             ok_debit = 1.3 <= debit <= 3.6
             note = score - (0 if ok_debit else 0.3)
             if meilleur is None or note > meilleur["note"]:
-                meilleur = {"fichier": f.name, "score": round(score, 2), "debit": round(debit, 2), "note": note, "entendu": entendu.strip()}
+                meilleur = {"fichier": f.name, "score": round(score, 2), "debit": round(debit, 2), "note": note, "entendu": entendu.strip(),
+                            "fin_mots": fin_mots, "debut_mots": debut_mots, "duree": round(len(audio) / 16000, 2)}
         alerte = meilleur["score"] < 0.72 or not (1.3 <= meilleur["debit"] <= 3.6)
         meilleur["alerte"] = alerte
         meilleur["texte"] = m["texte"]
@@ -96,17 +100,30 @@ for nom in noms:
         if final > DEBIT_MAX:
             tempo = max(ATEMPO_MIN / vitesse, tempo * DEBIT_MAX / final)
         meilleur["tempo_final"] = round(vitesse * tempo, 3)
-        liste.append((d / meilleur["fichier"], m["pause"], tempo, m.get("volume_db", 0)))
+        # la voix IA ajoute parfois des marmonnements après le dernier mot (« aa aa », 16 nov. 2026
+        # déjà vu sur les Shorts) : on coupe 0,25 s après le dernier mot entendu, avec un fondu
+        # (et parfois AVANT le premier mot : on commence 0,15 s avant lui)
+        coupe = None
+        if meilleur.get("fin_mots") and meilleur["fin_mots"] + 0.25 < meilleur["duree"]:
+            coupe = meilleur["fin_mots"] + 0.25
+        debut = meilleur["debut_mots"] - 0.15 if (meilleur.get("debut_mots") or 0) > 0.4 else None
+        liste.append((d / meilleur["fichier"], m["pause"], tempo, m.get("volume_db", 0), coupe, debut))
         print(f"{nom} c{i:02d} {'ALERTE' if alerte else 'ok'} score {meilleur['score']} debit {meilleur['debit']} | {meilleur['entendu']}", flush=True)
     (d / "choix.json").write_text(json.dumps(choix, ensure_ascii=False, indent=1), encoding="utf-8")
     cache_f.write_text(json.dumps(cache, ensure_ascii=False, indent=1), encoding="utf-8")
 
     # assemblage : prise, silence, prise, silence… puis ralenti
     entrees, filtres = [], []
-    for k, (f, pause, tempo, vol) in enumerate(liste):
+    for k, (f, pause, tempo, vol, coupe, debut) in enumerate(liste):
         entrees += ["-i", str(f)]
+        d0 = debut or 0
+        fin = f"atrim={d0:.2f}:{coupe:.2f},asetpts=PTS-STARTPTS,afade=t=out:st={coupe - d0 - 0.08:.2f}:d=0.08," if coupe else ""
+        if debut and not coupe:
+            fin = f"atrim=start={d0:.2f},asetpts=PTS-STARTPTS,"
+        if debut:
+            fin += "afade=t=in:d=0.05,"
         # ralenti global × rythme de l'émotion (triste = plus lent…), volume de l'émotion, puis la pause
-        filtres.append(f"[{k}]aresample=24000,atempo={vitesse * tempo:.3f},volume={vol}dB,"
+        filtres.append(f"[{k}]{fin}aresample=24000,atempo={vitesse * tempo:.3f},volume={vol}dB,"
                        f"apad=pad_dur={pause if k < len(liste) - 1 else 0}[a{k}]")
     concat = "".join(f"[a{k}]" for k in range(len(liste))) + f"concat=n={len(liste)}:v=0:a=1[out]"
     subprocess.run([FFMPEG, "-v", "error", "-y", *entrees, "-filter_complex", ";".join(filtres) + ";" + concat,

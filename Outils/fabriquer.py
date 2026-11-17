@@ -67,11 +67,23 @@ def version_suivante(ep):
     return f"{ep.name}_v{max(v, default=0) + 1}"
 
 
+def lufs(f):
+    err = subprocess.run([FFMPEG, "-hide_banner", "-nostats", "-i", str(f), "-map", "0:a", "-af", "ebur128", "-f", "null", "-"],
+                         capture_output=True, text=True, encoding="utf-8", errors="ignore").stderr
+    return float(re.findall(r"I:\s+(-?[\d.]+) LUFS", err)[-1])
+
+
 def finir(ep):
     f = video(ep)
     tmp, apercu = f.with_name("_tmp_" + f.name), f.with_name(f.stem + "_apercu720p.mp4")
+    # Le loudnorm du montage (une seule passe) sort parfois -12,7 LUFS sur une vidéo courte : on mesure et on corrige
+    # le volume vers -14 LUFS (niveau YouTube) avant de limiter les pics.
+    gain = round(-14.0 - lufs(f), 1)
+    gain = gain if abs(gain) > 0.4 else 0.0
+    if gain:
+        print(f"Volume corrigé de {gain:+.1f} dB (cible -14 LUFS)")
     subprocess.run([FFMPEG, "-v", "error", "-y", "-i", str(f), "-map", "0:v", "-c:v", "copy", "-map", "0:a", "-af",
-                    "aresample=192000,alimiter=limit=0.84:attack=1:release=60:level=0,aresample=48000",
+                    f"volume={gain}dB,aresample=192000,alimiter=limit=0.84:attack=1:release=60:level=0,aresample=48000",
                     "-c:a", "aac", "-b:a", "320k", "-movflags", "+faststart", str(tmp)], check=True)
     tmp.replace(f)
     subprocess.run([FFMPEG, "-v", "error", "-y", "-i", str(f), "-vf", "scale=1280:720", "-c:v", "libx264", "-preset", "medium",

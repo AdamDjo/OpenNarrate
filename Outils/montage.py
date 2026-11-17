@@ -191,6 +191,8 @@ with tempfile.TemporaryDirectory() as tmp:
             filtre += f",atrim=0:{dd},afade=out:st={max(0, dd - fo):.3f}:d={fo}"
         if s.get("fondu_in"):
             filtre += f",afade=in:d={s['fondu_in']}"
+        if s.get("creux_voix"):  # musique : on creuse la zone où la voix se comprend (1-4 kHz) pour qu'elle passe devant
+            filtre += ",equalizer=f=2200:t=o:w=1.6:g=-5"
         if s.get("grave"):
             filtre += f",asetrate=48000*{s['grave'] if isinstance(s['grave'], float) else 0.7},aresample=48000"
         if s.get("echo"):

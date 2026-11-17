@@ -165,13 +165,37 @@ if conf.get("fond"):
     sons.append({"fichier": AMB + conf["fond"]["fichier"], "morceau": 0, "dt": 0,
                  "volume": conf["fond"].get("volume", 0.3), "fondu_in": 2})
 musiques_placees = []
+# 16 nov. 2026 (« des bruits et des coupures d'une scène à l'autre, trouver la cause une fois pour toutes ») : chaque
+# musique finissait pile au changement de scène et la suivante commençait après, en fondu → 0,3 à 1 s de SILENCE TOTAL à
+# chaque changement de musique (mesuré : 5 trous dans une vidéo de 7 min). Maintenant elles se chevauchent : la nouvelle
+# commence CHEVAUCHE s avant le changement de scène, l'ancienne s'éteint CHEVAUCHE s après (fondu enchaîné). Après une
+# musique « coupe_net », la suivante démarre tout de suite, avec un fondu court.
+CHEVAUCHE = 1.5
+prec = None
+# Jamais une musique réclamée par Content ID (liste dans Musique/INTERDITES.txt) : la vidéo perdrait ses revenus.
+import musique
 for mu in conf["musiques"]:
+    try:
+        musique.verifier(mu["fichier"])
+    except musique.MusiqueRefusee as e:
+        sys.exit(f"ARRÊT : {e}")
+for mu in sorted(conf["musiques"], key=lambda x: x["de_bloc"]):
     d = sum(duree_bloc[n] for n in duree_bloc if mu["de_bloc"] <= n <= mu["a_bloc"])
     niv = niveau(ep / (MUS + mu["fichier"]), d)
-    vol = round(10 ** ((CIBLE_MUSIQUE - niv) / 20), 4)  # le "volume" de montage_images.json n'est plus utilisé
-    print(f"  musique {mu['fichier']} : fichier à {niv:.1f} LUFS → volume {vol} pour {CIBLE_MUSIQUE} LUFS")
-    s = {"fichier": MUS + mu["fichier"], "morceau": debut_bloc[mu["de_bloc"]], "dt": 0.2, "volume": vol,
-         "duree": round(d, 2), "fondu_in": 2.5, "fondu_out": 0.05 if mu.get("coupe_net") else 3.0}
+    # Une voix douce (narratrice) ou un orchestre très plein masquent la voix même à -36 : "cible_musique": -39 dans
+    # montage_images.json pour cette vidéo, et toutes les musiques sont creusées dans les fréquences de la voix (creux_voix).
+    cible = conf.get("cible_musique", CIBLE_MUSIQUE)
+    vol = round(10 ** ((cible - niv) / 20), 4)  # le "volume" de montage_images.json n'est plus utilisé
+    print(f"  musique {mu['fichier']} : fichier à {niv:.1f} LUFS → volume {vol} pour {cible} LUFS")
+    enchaine = prec is not None and prec["a_bloc"] + 1 >= mu["de_bloc"]
+    dt, fin_in = 0.2, 2.5
+    if enchaine:
+        dt, fin_in = (0.0, 0.6) if prec.get("coupe_net") else (-CHEVAUCHE, 2 * CHEVAUCHE)
+    s = {"fichier": MUS + mu["fichier"], "morceau": debut_bloc[mu["de_bloc"]], "dt": dt, "volume": vol,
+         "duree": round(d, 2), "fondu_in": fin_in, "fondu_out": 0.05 if mu.get("coupe_net") else 2 * CHEVAUCHE, "creux_voix": True}
+    if mu.get("debut"):  # commencer plus loin dans le morceau (ex. m_sorrow a un vrai silence à 17 s)
+        s["debut"] = mu["debut"]
+    prec = mu
     sons.append(s)
     musiques_placees.append((s, mu))
 for br in conf["bruitages"]:
@@ -208,6 +232,8 @@ t = departs()
 for s, mu in musiques_placees:
     suivants = [debut_bloc[n] for n in debut_bloc if n > mu["a_bloc"]]
     fin = t[min(suivants)] if suivants else t[-1] + morceaux[-1]["duree"]
+    if suivants and not mu.get("coupe_net"):
+        fin += CHEVAUCHE  # fondu enchaîné avec la musique suivante (voir CHEVAUCHE)
     s["duree"] = round(fin - t[s["morceau"]] - s["dt"], 2)
     if s["duree"] > duree(ep / s["fichier"]) - s.get("debut", 0):
         s["boucle"] = True  # fichier plus court que le passage : on le répète, sinon la musique s'arrête avant la fin

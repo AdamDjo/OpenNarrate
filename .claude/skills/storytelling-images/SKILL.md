@@ -32,5 +32,5 @@ Portrait de buste dans un lieu qui appartient à son sujet, jamais le décor d'u
 | Vidéo | 1920×1080 minimum | 16:9 |
 | Avatar | carré ≥ 800×800, < 1 Mo | Lisible en tout petit |
 | Bannière YouTube | 2560×1440, < 6 Mo | Zone sûre centrale 1546×423 |
-| Miniature | 1280×720, < 2 Mo | Sujet fort, 3 mots maximum, 2 versions à tester |
+| Miniature | 1280×720, < 2 Mo | Sujet fort, 3 mots maximum, 2 versions à tester. Sujet sur les deux tiers droits, tiers gauche sombre pour le texte. **Toujours le nom du sujet en petit sous l'accroche** (nom du lieu, du personnage, de l'événement…), pour qu'on sache de quoi parle la vidéo. Texte : `Outils/miniature.py <image> <sortie.jpg> "LIGNE 1" "LIGNE 2" --petit="Nom du sujet" --police=<police du thème> --couleur=r,g,b --couleur2=r,g,b` |
 | Miniature de Short | 1080×1920 | Un visage ou un lieu |

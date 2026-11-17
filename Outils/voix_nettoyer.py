@@ -9,6 +9,7 @@ Pour chaque bNN.wav :
 L'original est gardé dans <dossier>/_bruts/. Relancer voix_choisir.py écrase le nettoyage : relancer ce script ensuite.
 """
 import difflib
+import json
 import re
 import shutil
 import subprocess
@@ -71,6 +72,9 @@ racine = Path(args[0])
 noms = args[1:] or sorted(p.stem for p in racine.glob("b*.wav"))
 modele = WhisperModel("small", device="cpu", compute_type="int8")
 (racine / "_bruts").mkdir(exist_ok=True)
+# "filtre_voix" dans montage_images.json : filtre ffmpeg propre à une voix (ex. voix râpeuse, Docs/voix.md)
+reglages = racine.parent.parent / "montage_images.json"
+filtre_voix = json.loads(reglages.read_text(encoding="utf-8")).get("filtre_voix", "") if reglages.exists() else ""
 for nom in noms:
     f = racine / f"{nom}.wav"
     brut = racine / "_bruts" / f"{nom}.wav"
@@ -108,3 +112,8 @@ for nom in noms:
     pic = 20 * np.log10(float(np.abs(bruit).max()) + 1e-9) if len(bruit) else -120
     etat = "ok" if ratio >= 0.93 and len(t1) >= len(t0) - 2 else "ALERTE"
     print(f"{nom} {etat} mots {len(t0)}->{len(t1)} ressemblance {ratio:.2f} | hors-mots {100 * (~garde).mean():.0f} % du temps, pic retiré {pic:.0f} dB", flush=True)
+    if filtre_voix:   # dernier traitement, après le contrôle ; comme on repart de _bruts, il ne s'applique jamais deux fois
+        tmp = f.with_suffix(".filtre.wav")
+        subprocess.run([FFMPEG, "-v", "error", "-y", "-i", str(f), "-af", filtre_voix, "-ac", "1", "-ar", str(SR),
+                        "-c:a", "pcm_s16le", str(tmp)], check=True)
+        tmp.replace(f)

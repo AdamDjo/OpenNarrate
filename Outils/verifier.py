@@ -86,6 +86,30 @@ for a, b in zip(voix, voix[1:]):
 print(f"Silences entre voix : minimum {min(ecarts):.2f} s, médiane {sorted(ecarts)[len(ecarts) // 2]:.2f} s")
 print("Musique par rapport à la voix (pires pauses, en dB) :", sorted(marges, reverse=True)[:3])
 
+# Trous de son (16 nov. 2026 : « des coupures d'une scène à l'autre ») : plus de 0,25 s presque muet (< -55 dB) hors du
+# tout début et du fondu final = la musique s'est éteinte au changement de scène, ou un bout de son manque.
+n = SR // 20  # 50 ms
+env = 20 * np.log10(np.sqrt(np.mean(mix[:len(mix) // n * n].reshape(-1, n) ** 2, axis=1)) + 1e-9)
+muet, deb = 0, None
+for i, v in enumerate(env):
+    t = i * 0.05
+    if v < -55 and 1.0 < t < d["audio"] - 9:
+        deb = t if deb is None else deb
+        muet += 1
+    else:
+        if muet >= 5:
+            problemes.append(f"{mm(deb)} : trou de son de {muet * 0.05:.2f} s (musique coupée au changement de scène ?)")
+        muet, deb = 0, None
+# Bruits avant ou après une phrase : son fort dans le blanc qui entoure chaque voix (avant son premier mot / après son dernier)
+for s in m["sons"]:
+    if s.get("voix"):
+        x = lire(ep / s["fichier"])
+        a, b = bornes(x)
+        for zone in (x[:max(0, int((a - 0.2) * SR))], x[int((b + 0.2) * SR):]):  # 0,2 s : le début/la fin d'un mot doux est sous le seuil
+            if len(zone) and 20 * np.log10(np.abs(zone).max() + 1e-9) > -30:
+                problemes.append(f"{s['fichier'][-7:-4]} : bruit avant ou après la phrase (à écouter)")
+                break
+
 # Plans figés ou noirs (le fondu final est normal)
 fin = d["video"] - 3.5
 err = subprocess.run([FFMPEG, "-hide_banner", "-nostats", "-i", str(video), "-an", "-vf",
