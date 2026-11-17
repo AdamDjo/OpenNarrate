@@ -204,7 +204,7 @@ with tempfile.TemporaryDirectory() as tmp:
         f += f";{''.join(pistes)}amix=inputs={len(pistes)}:normalize=0:duration=longest"
         if voix:  # "voix": true -> la musique et les bruitages baissent automatiquement sous la voix
             f += (f"[fond];{''.join(voix)}amix=inputs={len(voix)}:normalize=0:duration=longest,apad=whole_dur={total:.3f},asplit[v1][v2];"  # apad : sinon le son s'arrête à la dernière voix
-                  f"[fond][v1]sidechaincompress=threshold=0.03:ratio=6:attack=20:release=350[fc];"
+                  f"[fond][v1]sidechaincompress=threshold=0.03:ratio=3:attack=40:release=700[fc];"
                   f"[fc][v2]amix=inputs=2:normalize=0:duration=longest")
     else:  # vidéo sans musique ni bruitage : seulement la voix
         f += f";{''.join(voix)}amix=inputs={len(voix)}:normalize=0:duration=longest,apad=whole_dur={total:.3f}"

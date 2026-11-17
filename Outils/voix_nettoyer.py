@@ -1,6 +1,6 @@
 """Enlève les respirations et petits bruits ENTRE les mots d'une narration déjà assemblée.
 Usage (Python 3.12 du système, qui a faster-whisper) :
-  python -I Outils\\voix_nettoyer.py <dossier_narration> [b02 b03 ...]
+  python -I Outils\\voix\\voix_nettoyer.py <dossier_narration> [b02 b03 ...]
 Pour chaque bNN.wav :
   - repère chaque mot avec whisper (horodatage mot par mot) ;
   - baisse de 30 dB tout ce qui est hors des mots, avec des fondus de 20 ms (pas de coupure audible) ;
@@ -62,15 +62,53 @@ def voise(tr):
     return float(c[SR // 320:SR // 80].max() / e) > 0.55
 
 
-args = sys.argv[1:]
-LANGUE = "fr"
-if "--langue" in args:
-    i = args.index("--langue")
-    LANGUE = args[i + 1]
-    del args[i:i + 2]
-racine = Path(args[0])
-noms = args[1:] or sorted(p.stem for p in racine.glob("b*.wav"))
+def fragments(a, mots_garde):
+    """Bouts de son isolés (< 0,35 s, entourés d'au moins 0,25 s de silence) : marmonnements de l'IA restés entre deux
+    phrases, ou début de mot coupé en fin de fichier. Ils s'entendent comme une « coupure bizarre ».
+    On garde un fragment si whisper y entend un mot du texte du bloc (vrai mot court, ex. « Non. »)."""
+    pas = int(0.02 * SR)
+    db = np.array([20 * np.log10(np.sqrt((a[i:i + pas] ** 2).mean()) + 1e-9) for i in range(0, len(a) - pas + 1, pas)])
+    runs, i = [], 0
+    while i < len(db):
+        if db[i] > -45:
+            j = i
+            while j < len(db) and db[j] > -45:
+                j += 1
+            if runs and (i - runs[-1][1]) * 0.02 < 0.12:
+                runs[-1] = (runs[-1][0], j)
+            else:
+                runs.append((i, j))
+            i = j
+        else:
+            i += 1
+    duree, out = len(a) / SR, []
+    for k, (i, j) in enumerate(runs):
+        a0, a1 = i * 0.02, j * 0.02
+        avant = a0 - (runs[k - 1][1] * 0.02 if k else 0.0)
+        apres = (runs[k + 1][0] * 0.02 if k + 1 < len(runs) else duree) - a1
+        if a1 - a0 < 0.35 and avant >= 0.25 and (apres >= 0.25 or k + 1 == len(runs)):
+            if not any(w.start < a1 and w.end > a0 and norme(w.word) and len(norme(w.word)[0]) >= 3 and norme(w.word)[0] in mots_garde for w in avant_mots):
+                out.append((a0, a1))
+    return out
+
+
+def texte_bloc(nom):
+    """Mots attendus du bloc (blocs.json, ou blocs_en.json pour la piste anglaise)."""
+    ep = racine.parent.parent
+    for fb in ((ep / "blocs_en.json", ep / "blocs.json") if LANGUE == "en" else (ep / "blocs.json",)):
+        if fb.exists():
+            for b in json.loads(fb.read_text(encoding="utf-8")):
+                if f"b{b['n']:02d}" == nom:
+                    return set(norme(re.sub(r"\{[^}]*\}", " ", b["texte"])))
+    return set()
+
+
+racine = Path(sys.argv[1])
+noms = sys.argv[2:] or sorted(p.stem for p in racine.glob("b*.wav"))
 modele = WhisperModel("small", device="cpu", compute_type="int8")
+# langue lue dans le plan.json d'un bloc (voix_narrateur.py --langue en pour la piste anglaise)
+_plans = sorted(racine.glob("b*/plan.json"))
+LANGUE = json.loads(_plans[0].read_text(encoding="utf-8")).get("langue", "fr") if _plans else "fr"
 (racine / "_bruts").mkdir(exist_ok=True)
 # "filtre_voix" dans montage_images.json : filtre ffmpeg propre à une voix (ex. voix râpeuse, Docs/voix.md)
 reglages = racine.parent.parent / "montage_images.json"
@@ -86,7 +124,7 @@ for nom in noms:
     for w in avant:
         garde[max(0, int((w.start - AVANT) * SR)):int((w.end + APRES) * SR)] = True
     # sécurité : on rend les zones hors-mots qui ressemblent à de la voix
-    # (une fin de mot est forte et grave ; une respiration est un souffle aigu)
+    # (une fin de mot est forte et grave ; une respiration est un souffle aigu : vu au diagnostic, « Forever » perdait son r)
     n, pas = int(0.04 * SR), int(0.02 * SR)
     fen = np.hanning(n)
     freqs = np.fft.rfftfreq(n, 1 / SR)
@@ -104,6 +142,15 @@ for nom in noms:
     k = np.hanning(int(0.02 * SR))
     gain = np.convolve(gain, k / k.sum(), "same").astype(np.float32)
     propre = a * gain
+    avant_mots = avant
+    for a0, a1 in fragments(propre, texte_bloc(nom)):
+        i0, i1 = int(a0 * SR), min(len(propre), int(a1 * SR) + int(0.02 * SR))
+        propre[i0:i1] *= 10 ** (-40 / 20)
+        print(f"  {nom} : bout de son isolé retiré à {a0:.2f}-{a1:.2f} s", flush=True)
+    # bords du fichier : jamais un son qui démarre ou s'arrête net (clic, mot coupé)
+    fi, fo = int(0.01 * SR), int(0.03 * SR)
+    propre[:fi] *= np.linspace(0, 1, fi, dtype=np.float32)
+    propre[-fo:] *= np.linspace(1, 0, fo, dtype=np.float32)
     ecrire(f, propre)
     apres = mots(modele, lire(f, 16000))
     t0, t1 = [norme(" ".join(w.word for w in x)) for x in (avant, apres)]

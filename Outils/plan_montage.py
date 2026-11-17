@@ -51,6 +51,26 @@ def niveau(f, d):
     return float(re.findall(r"I:\s+(-?[\d.]+) LUFS", err)[-1])
 
 
+def fin_utile(f):
+    """Fin de la vraie musique, avant le silence final éventuel (en secondes)."""
+    d = duree(f)
+    err = subprocess.run([FFMPEG, "-hide_banner", "-nostats", "-i", str(f), "-af", "silencedetect=n=-50dB:d=0.25", "-f", "null", "-"],
+                         capture_output=True, text=True, encoding="utf-8", errors="ignore").stderr
+    debuts = [float(x) for x in re.findall(r"silence_start: (-?[\d.]+)", err)]
+    fin_sil = re.findall(r"silence_end: (-?[\d.]+)", err)
+    if debuts and (len(fin_sil) < len(debuts) or float(fin_sil[-1]) >= d - 0.05):
+        return debuts[-1]
+    return d
+
+
+def debut_utile(f):
+    """Début de la vraie musique, après le silence éventuel du début du fichier (en secondes)."""
+    err = subprocess.run([FFMPEG, "-hide_banner", "-nostats", "-t", "15", "-i", str(f), "-af", "silencedetect=n=-50dB:d=0.1", "-f", "null", "-"],
+                         capture_output=True, text=True, encoding="utf-8", errors="ignore").stderr
+    m = re.search(r"silence_start: (-?[\d.]+)\s.*?silence_end: ([\d.]+)", err, re.S)
+    return float(m.group(2)) if m and float(m.group(1)) <= 0.01 else 0.0
+
+
 def bornes_parole(f):
     """(début, fin) de la vraie parole dans un fichier voix, en secondes (fenêtres de 20 ms au-dessus de -38 dB)."""
     f = str(f)
@@ -193,8 +213,10 @@ for mu in sorted(conf["musiques"], key=lambda x: x["de_bloc"]):
         dt, fin_in = (0.0, 0.6) if prec.get("coupe_net") else (-CHEVAUCHE, 2 * CHEVAUCHE)
     s = {"fichier": MUS + mu["fichier"], "morceau": debut_bloc[mu["de_bloc"]], "dt": dt, "volume": vol,
          "duree": round(d, 2), "fondu_in": fin_in, "fondu_out": 0.05 if mu.get("coupe_net") else 2 * CHEVAUCHE, "creux_voix": True}
-    if mu.get("debut"):  # commencer plus loin dans le morceau (ex. m_sorrow a un vrai silence à 17 s)
+    if mu.get("debut"):  # commencer plus loin dans le morceau (ex. un vrai silence au milieu du fichier)
         s["debut"] = mu["debut"]
+    elif (d0 := debut_utile(ep / (MUS + mu["fichier"]))) > 0.1:  # silence au début du fichier : on le saute (sinon petit creux)
+        s["debut"] = round(d0, 2)
     prec = mu
     sons.append(s)
     musiques_placees.append((s, mu))
@@ -235,8 +257,19 @@ for s, mu in musiques_placees:
     if suivants and not mu.get("coupe_net"):
         fin += CHEVAUCHE  # fondu enchaîné avec la musique suivante (voir CHEVAUCHE)
     s["duree"] = round(fin - t[s["morceau"]] - s["dt"], 2)
-    if s["duree"] > duree(ep / s["fichier"]) - s.get("debut", 0):
-        s["boucle"] = True  # fichier plus court que le passage : on le répète, sinon la musique s'arrête avant la fin
+    # Fichier plus court que le passage : on le relance en fondu enchaîné JUSTE AVANT son silence de fin. (une répétition simple
+    # rejouait le silence de fin du fichier : 5 s de trou en pleine vidéo.)
+    utile = fin_utile(ep / s["fichier"]) - s.get("debut", 0)
+    if s["duree"] > utile:
+        total, pas, k = s["duree"], max(utile - 2 * CHEVAUCHE, 1.0), 1
+        fondu_fin = s["fondu_out"]
+        s.update({"duree": round(utile, 2), "fondu_out": 2 * CHEVAUCHE})
+        while k * pas + utile < total:
+            sons.append({**s, "dt": round(s["dt"] + k * pas, 2), "fondu_in": 2 * CHEVAUCHE})
+            k += 1
+        sons.append({**s, "dt": round(s["dt"] + k * pas, 2), "fondu_in": 2 * CHEVAUCHE,
+                     "duree": round(total - k * pas, 2), "fondu_out": fondu_fin})
+        print(f"  musique {mu['fichier']} relancée {k} fois en fondu (fichier utile {utile:.1f} s, passage {total:.1f} s)")
 
 ep_json = {"magique": {"format": "16:9", "nom": nom, "bloom": 0.18, "fin_son": 8.0, "fin_image": 3.0, "dossier_clips": "anim/clips",
                        "theme_titres": conf.get("theme_titres", {}), "morceaux": morceaux, "titres": titres, "sons": sons}}
