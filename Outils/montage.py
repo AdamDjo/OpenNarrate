@@ -15,7 +15,7 @@ import json, shutil, subprocess, sys, tempfile, time, urllib.parse, urllib.reque
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from commun import COMFY_ENTREE, COMFY_URL, FFMPEG, POLICE_TITRES as POLICE, PYTHON_VOIX as VENV, RACINE
+from commun import COMFY_ENTREE, COMFY_URL, FFMPEG, FFPROBE, POLICE_TITRES as POLICE, PYTHON_VOIX as VENV, RACINE, media_fingerprint
 
 DOSSIER = (RACINE / sys.argv[1]).resolve()
 CONF = json.loads((DOSSIER / "episode.json").read_text(encoding="utf8"))["magique"]
@@ -60,8 +60,7 @@ def boucle_sans_saut(src, t=0.5):
     dest = src.with_name(src.stem + "_boucle.mp4")
     if dest.exists():
         return dest
-    sonde = str(Path(FFMPEG).with_name("ffprobe.exe"))
-    l = float(subprocess.run([sonde, "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(src)],
+    l = float(subprocess.run([FFPROBE, "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(src)],
                              capture_output=True, text=True, check=True).stdout)
     f = (f"[0:v]split[a][b];[a]trim=start={t},setpts=PTS-STARTPTS[x];[b]trim=end={t},setpts=PTS-STARTPTS[y];"
          f"[x][y]xfade=transition=fade:duration={t}:offset={l - 2 * t:.3f},format=yuv420p[v]")
@@ -88,26 +87,40 @@ def camera(m, d):
     return f
 
 
-with tempfile.TemporaryDirectory() as tmp:
+with tempfile.TemporaryDirectory(dir=DOSSIER, prefix=".render-") as tmp:
     tmp = Path(tmp)
-    shutil.copy(POLICE, tmp / "police.ttf")
-    durees = []
+    durees, segments = [], []
+    cache = DOSSIER / ".render-cache"
+    cache.mkdir(exist_ok=True)
+    engine_files = [Path(__file__), Path(__file__).with_name("kenburns.py")]
     for i, m in enumerate(CONF["morceaux"]):
         sortie = str(tmp / f"m{i}.mp4")
+        cached = None
         if m.get("image"):
             # durée arrondie à une image près : sinon les arrondis s'additionnent sur 40+ plans et la première
             # coupe nette (transition d'une image) arrive après la fin de la vidéo précédente → image figée/arrêtée
             d = max(1, round(m["duree"] * FPS)) / FPS
+            source = DOSSIER / m["image"]
+            key = media_fingerprint([W, H, FPS, FFMPEG, m], [source, *engine_files])
+            cached = cache / f"{key}.mp4"
+            if cached.is_file():
+                segments.append(cached)
+                durees.append(d + round(m.get("gel", 0) * FPS) / FPS)
+                continue
             z0, z1 = m.get("zoom", [1.0, 1.0])
             cx, cy = m.get("centre", [0.5, 0.5])
-            kb = tmp / f"k{i}.mp4"
-            # zoom lent fluide calculé sur la carte graphique (zoompan de FFmpeg = image qui « vibre »)
-            subprocess.run([str(VENV), str(RACINE / "Outils" / "kenburns.py"), str(DOSSIER / m["image"]), str(kb),
-                            f"{d:.4f}", str(z0), str(z1), str(cx), str(cy), str(W), str(H), str(FPS)],
-                           check=True, capture_output=True)
-            entree = ["-i", str(kb)]
-            f = f"[0:v]setsar=1,fps={FPS}"
-            m = {**m, "zoom": [1.0, 1.0]}  # le zoom est déjà fait
+            if (z0, z1) == (1.0, 1.0):
+                entree = ["-i", str(source)]
+                f = (f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos,"
+                     f"crop={W}:{H},setsar=1,fps={FPS}")
+            else:
+                kb = tmp / f"k{i}.mp4"
+                subprocess.run([str(VENV), str(RACINE / "Outils" / "kenburns.py"), str(source), str(kb),
+                                f"{d:.4f}", str(z0), str(z1), str(cx), str(cy), str(W), str(H), str(FPS)],
+                               check=True)
+                entree = ["-i", str(kb)]
+                f = f"[0:v]setsar=1,fps={FPS}"
+                m = {**m, "zoom": [1.0, 1.0]}
         else:
             clips = DOSSIER / CONF.get("dossier_clips", "clips")
             src = clips / "hd" / f"{m['clip']}.mp4"
@@ -143,12 +156,18 @@ with tempfile.TemporaryDirectory() as tmp:
         # sécurité : un morceau trop court (ralenti/zoompan) arrêtait toute la vidéo au xfade suivant
         f += f",tpad=stop_mode=clone:stop_duration=3,trim=duration={d:.3f},setpts=PTS-STARTPTS,format=yuv420p[v]"
         run(*entree, "-filter_complex", f, "-map", "[v]", "-c:v", "libx264", "-crf", "14", sortie)
+        if cached is not None:
+            with tempfile.TemporaryDirectory(dir=cache) as staging:
+                staged_segment = Path(staging) / cached.name
+                shutil.copyfile(sortie, staged_segment)
+                staged_segment.replace(cached)
+        segments.append(cached if cached is not None else Path(sortie))
         durees.append(d)
 
     # Enchaînement avec transitions (xfade) ; coupe franche si pas de transition
     entrees, debuts = [], []
-    for i in range(len(durees)):
-        entrees += ["-i", str(tmp / f"m{i}.mp4")]
+    for segment in segments:
+        entrees += ["-i", str(segment)]
     # même base de temps pour tous (sinon xfade peut arrêter la vidéo en route)
     f = "".join(f"[{i}:v]fps={FPS},settb=1/{FPS},setpts=N[n{i}];" for i in range(len(durees)))
     prec, t = "n0", durees[0]
@@ -169,17 +188,20 @@ with tempfile.TemporaryDirectory() as tmp:
           f"colorbalance=rs=0.03:bs=-0.02:rh=0.03:bh=-0.04,split[n][h];[h]gblur=sigma=22[hb];"
           f"[n][hb]blend=all_mode=screen:all_opacity={b},vignette=PI/4.5,unsharp=5:5:0.35")  # plus de grain animé (il « fourmillait »)
     # textes à l'écran : PNG dessinés par Outils/titres_png.py (voile doux, doré dégradé, ornement), posés en fondu
-    (tmp / "titres.json").write_text(json.dumps(CONF.get("titres", []), ensure_ascii=False), encoding="utf8")
-    (tmp / "theme.json").write_text(json.dumps(THEME, ensure_ascii=False), encoding="utf8")
-    subprocess.run([str(VENV), str(RACINE / "Outils" / "titres_png.py"), str(tmp), str(POLICE)], check=True)
+    titres = CONF.get("titres", [])
+    if titres:
+        (tmp / "titres.json").write_text(json.dumps(titres, ensure_ascii=False), encoding="utf8")
+        (tmp / "theme.json").write_text(json.dumps(THEME, ensure_ascii=False), encoding="utf8")
+        subprocess.run([str(VENV), str(RACINE / "Outils" / "titres_png.py"), str(tmp), str(POLICE)], check=True)
     f += "[base0]"
-    for j, tx in enumerate(CONF.get("titres", [])):
+    for j, tx in enumerate(titres):
         a = debuts[tx["morceau"]] + tx.get("dt", 0)
         d = tx["duree"]
         f += (f";movie=t{j}.png,format=rgba,loop=loop={round(d * FPS)}:size=1:start=0,setpts=N/{FPS}/TB+{a:.3f}/TB,"
               f"fade=t=in:st={a:.3f}:d=0.5:alpha=1,fade=t=out:st={a + d - 0.6:.3f}:d=0.6:alpha=1[tt{j}];"
               f"[base{j}][tt{j}]overlay=0:0:eof_action=pass:repeatlast=0[base{j + 1}]")
-    f += f";[base{len(CONF.get('titres', []))}]fade=in:st=0:d=0.25,fade=out:st={total-CONF.get('fin_image', 0.6):.3f}:d={CONF.get('fin_image', 0.6)}[vid]"
+    image_fade = min(total, CONF.get("fin_image", 0.6))
+    f += f";[base{len(titres)}]fade=in:st=0:d=0.25,fade=out:st={total-image_fade:.3f}:d={image_fade}[vid]"
 
     pistes, voix, na = [], [], len(durees)
     for s in CONF.get("sons", []):
@@ -208,12 +230,27 @@ with tempfile.TemporaryDirectory() as tmp:
                   f"[fc][v2]amix=inputs=2:normalize=0:duration=longest")
     else:  # vidéo sans musique ni bruitage : seulement la voix
         f += f";{''.join(voix)}amix=inputs={len(voix)}:normalize=0:duration=longest,apad=whole_dur={total:.3f}"
+    audio_fade = min(total, CONF.get("fin_son", 0.8))
     f += (f",atrim=0:{total:.3f},"
-          f"afade=out:st={total-CONF.get('fin_son', 0.8):.3f}:d={CONF.get('fin_son', 0.8)},loudnorm=I=-14:TP=-1.5:LRA=11,alimiter=limit=0.89[aud]")
+          f"afade=out:st={total-audio_fade:.3f}:d={audio_fade},loudnorm=I=-14:TP=-1.5:LRA=11,alimiter=limit=0.89[aud]")
     SORTIE.parent.mkdir(parents=True, exist_ok=True)
-    run(*entrees, "-filter_complex", f, "-map", "[vid]", "-map", "[aud]", "-c:v", "libx264", "-crf", "17",
-        "-preset", "slow", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
-        str(SORTIE), cwd=tmp)
+    with tempfile.TemporaryDirectory(dir=SORTIE.parent, prefix=".render-") as staging:
+        rendered = Path(staging) / SORTIE.name
+        run(*entrees, "-filter_complex", f, "-map", "[vid]", "-map", "[aud]", "-c:v", "libx264", "-crf", "17",
+            "-preset", "slow", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
+            str(rendered), cwd=tmp)
+        rendered.replace(SORTIE)
+    chapter_lines = ["0:00 Introduction"]
+    for title in titres:
+        if title.get("style") != "chapitre":
+            continue
+        seconds = int(debuts[title["morceau"]])
+        minutes, seconds = divmod(seconds, 60)
+        timecode = f"{minutes}:{seconds:02d}" if minutes < 60 else f"{minutes // 60}:{minutes % 60:02d}:{seconds:02d}"
+        if minutes or seconds:
+            chapter_lines.append(f"{timecode} {' '.join(title['texte'].split())}")
+    if len(chapter_lines) > 1:
+        SORTIE.with_suffix(".chapters.txt").write_text("\n".join(chapter_lines) + "\n", encoding="utf-8")
     for i, d in enumerate(debuts):
         print(f"  morceau {i:2d} : {d:5.2f} s  {CONF['morceaux'][i].get('clip') or CONF['morceaux'][i].get('image')}")
 print("Terminé :", SORTIE, f"({total:.1f} s)")

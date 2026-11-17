@@ -3,7 +3,8 @@
 Un sujet donne une vidéo racontée. Réponds dans la langue de l'utilisateur, simplement.
 
 ## Comment on travaille
-- L'utilisateur donne **un sujet** : utilise le skill **`storytelling-video`**, qui suit `Docs/workflow.md`.
+- L'utilisateur demande de créer ou de reprendre une vidéo : utilise l'agent **`videomaker`** (`.claude/agents/videomaker.md`), qui suit `Docs/workflow.md`.
+- Confirme la langue de narration avant d'écrire si elle n'est pas indiquée. La valeur `langue` de `montage_images.json` fait foi pour l'épisode. Note les validations et la prochaine action dans `A_REPRENDRE.md`.
 - **3 validations** : le texte (avant toute génération), la planche d'images avec un test de voix, la vidéo montée avec les images fixes. **Les animations sont optionnelles**, seulement sur demande. Puis une seule confirmation pour publier. « Mode auto », uniquement si l'utilisateur l'écrit.
 - Montre un aperçu avant toute étape longue. Regroupe les retours avant de relancer un montage (30 à 40 min).
 - **Ne déplace ni ne modifie rien dans `Outils/` ou le projet pendant un montage.**

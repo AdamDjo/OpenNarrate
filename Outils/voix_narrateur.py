@@ -123,9 +123,9 @@ if __name__ == "__main__":
         textes = [f"b{b['n']:02d}={b['texte']}" for b in json.loads(Path(blocs).read_text(encoding="utf-8")) if b["mots"]]
     if seulement:  # ne touche pas aux autres blocs (leurs plan.json ont pu être retouchés à la main)
         textes = [x for x in textes if x.split("=", 1)[0] in seulement.split(",")]
-    ref = RACINE / "Narrateurs" / narrateur / "reference.wav"
-    if not ref.exists():
-        sys.exit(f"Référence introuvable : {ref}")
+    ref = None if narrateur == "default" else RACINE / "Narrateurs" / narrateur / "reference.wav"
+    if ref is not None and not ref.is_file():
+        sys.exit(f"Voice reference not found: {ref}")
     appareil = "cuda" if torch.cuda.is_available() else "cpu"
     from chatterbox.mtl_tts import ChatterboxMultilingualTTS
     modele = ChatterboxMultilingualTTS.from_pretrained(device=appareil)
@@ -154,7 +154,8 @@ if __name__ == "__main__":
                 if f.exists():
                     continue
                 e = EMOTIONS[m.get("emotion", "neutre")]
-                w = modele.generate(prononcer(m["texte"]), language_id=langue, audio_prompt_path=str(ref),
+                w = modele.generate(prononcer(m["texte"]), language_id=langue,
+                                    audio_prompt_path=str(ref) if ref is not None else None,
                                     exaggeration=e["exag"], cfg_weight=e["cfg"]).cpu()
                 # écriture puis renommage : si le PC s'éteint en plein milieu, pas de prise à moitié écrite
                 tmpf = f.with_name(f.stem + "_tmp.wav")

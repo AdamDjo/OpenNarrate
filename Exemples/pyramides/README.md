@@ -27,6 +27,6 @@ Cette vidéo contient du contenu généré par IA : si vous la republiez, indiqu
 
 1. Copiez les fichiers de ce dossier dans `Episodes/2026-12-01_pyramides/`.
 2. Ajoutez un narrateur `nefret` dans `Narrateurs/` et la police dans `Polices/`.
-3. Lancez `generer_images.ps1`, puis les commandes du [README principal](../../README.md#les-commandes) à partir de `voix`.
+3. Lancez `generer_images.ps1`, puis les commandes du [README français](../../README.fr.md#les-commandes) à partir de `voix`.
 
 Les images et la voix sont générées à nouveau : elles ne seront pas identiques.

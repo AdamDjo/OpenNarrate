@@ -21,7 +21,7 @@ Trois Shorts verticaux par vidéo, faits **après la validation 3**, avec la voi
 python Outils/short.py <projet> [nom_du_short]
 ```
 (Python « python_outils »). Résultat : `A_publier/<projet>_<nom>.mp4`. Environ 3 à 5 min par Short.
-Le rendu sans textes reste dans `shorts/<nom>/rendu_sans_textes.mp4` : pour corriger seulement les textes, relancer la même commande (quelques secondes). Pour changer les images ou la musique, supprimer d'abord ce fichier.
+Le rendu sans textes reste dans `shorts/<nom>/rendu_sans_textes.mp4`. Relance la même commande après une correction. Le rendu intermédiaire est recalculé si les images, la voix, la musique ou le plan de montage changent.
 Textes réglés à l'usage : sous-titres de 3 mots au plus, taille 96 sur 1080 de large (76 était trop petit pour un téléphone), accroche 104.
 L'outil recadre, fait le zoom lent, met la musique sous la voix (même calcul de volume que la vidéo), puis incruste l'accroche, **les sous-titres** (les mots du script, calés sur la voix) et le texte de fin, avec la police et les couleurs du `theme_titres` de la vidéo (sous-titres : `"police_sous_titres"` de `shorts.json`, sinon `police_phrase` de `config.json`).
 

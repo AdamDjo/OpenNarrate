@@ -22,7 +22,7 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from commun import FFMPEG, FFPROBE, POLICE_PHRASE, POLICE_TITRES, PYTHON_OUTILS, RACINE
+from commun import FFMPEG, FFPROBE, POLICE_PHRASE, POLICE_TITRES, PYTHON_OUTILS, RACINE, media_fingerprint
 import musique
 import struct
 
@@ -146,15 +146,17 @@ for s in shorts:
         continue
     d = ep / "shorts" / s["nom"]
     (d / "img").mkdir(parents=True, exist_ok=True)
-    morceaux, sons, voix = [], [], []
+    morceaux, sons, voix, sources = [], [], [], []
     for p, plan in enumerate(s["plans"]):
         wav = ep / "voix" / "narration" / f"b{plan['bloc']:02d}.wav"
+        sources.append(wav)
         dv = duree(wav)
         total = AVANT + dv + ECART + TRANS + (FIN if p == len(s["plans"]) - 1 else 0)
         part = total / len(plan["images"])
         voix.append((len(morceaux), wav, plan["bloc"]))
         sons.append({"fichier": f"../../voix/narration/{wav.name}", "morceau": len(morceaux), "dt": AVANT, "voix": True, "volume": 1.0})
         for j, (cle, x) in enumerate(plan["images"]):
+            sources.append(ep / conf["alias"][cle])
             nom_img = f"img/{cle}_{round(x * 100)}.png"
             recadrer(cle, x, d / nom_img)
             m = {"image": nom_img, "duree": round(part, 2), "zoom": [1.0, 1.07] if len(morceaux) % 2 == 0 else [1.07, 1.0],
@@ -171,16 +173,22 @@ for s in shorts:
     sons.append({"fichier": f"../../../../Musique/themes/{s['musique']}", "morceau": 0, "dt": 0.0, "volume": vol,
                  "duree": round(total, 2), "fondu_in": 1.5, "fondu_out": 2.5, "creux_voix": True, **({"boucle": True} if duree(mu) < total else {})})
     tmp_nom = f"_tmp_{ep.name}_{s['nom']}"
-    (d / "episode.json").write_text(json.dumps({"magique": {
+    render_plan = {"magique": {
         "format": "9:16", "nom": tmp_nom, "bloom": 0.18, "fin_son": 2.0, "fin_image": 0.8, "theme_titres": {},
-        "morceaux": morceaux, "titres": [], "sons": sons}}, ensure_ascii=False, indent=1), encoding="utf-8")
+        "morceaux": morceaux, "titres": [], "sons": sons}}
+    (d / "episode.json").write_text(json.dumps(render_plan, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"== {s['nom']} : {len(morceaux)} images, {total:.1f} s, musique à {vol}")
     base = d / "rendu_sans_textes.mp4"  # gardé : on peut refaire les textes sans refaire le rendu
-    if base.exists():  # rendu déjà fait (reprise après une erreur sur les textes) : on ne refait que les textes
+    stamp = base.with_suffix(".sha256")
+    engine = RACINE / "Outils"
+    fingerprint = media_fingerprint(render_plan, [*sources, mu, Path(__file__),
+                                                    engine / "montage.py", engine / "kenburns.py"])
+    if base.is_file() and stamp.is_file() and stamp.read_text(encoding="ascii") == fingerprint:
         print("   rendu déjà fait, textes seulement")
     else:
         subprocess.run([PYTHON_OUTILS, "-I", str(RACINE / "Outils" / "montage.py"), str(d.relative_to(RACINE))], check=True, cwd=RACINE)
-        shutil.move(RACINE / "A_publier" / f"{tmp_nom}.mp4", base)
+        (RACINE / "A_publier" / f"{tmp_nom}.mp4").replace(base)
+        stamp.write_text(fingerprint, encoding="ascii")
 
     # textes incrustés : accroche, sous-titres, fin
     if modele is None:

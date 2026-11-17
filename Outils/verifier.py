@@ -70,7 +70,7 @@ for s in m["sons"]:
     if s.get("voix"):
         a, b = bornes(lire(ep / s["fichier"]))
         t = S[s["morceau"]] + s["dt"]
-        voix.append((s["fichier"][-7:-4], t + a, t + b))
+        voix.append((Path(s["fichier"]).stem, t + a, t + b))
 bruitages = [S[s["morceau"]] + s["dt"] for s in m["sons"] if "ambiance/s_" in s["fichier"]]
 ecarts, marges = [], []
 for a, b in zip(voix, voix[1:]):
@@ -83,23 +83,29 @@ for a, b in zip(voix, voix[1:]):
         marges.append((round(float(marge), 1), mm(a[2])))
         if marge > MARGE_DB:
             problemes.append(f"{mm(a[2])} : la musique est trop proche de la voix ({marge:.1f} dB)")
-print(f"Silences entre voix : minimum {min(ecarts):.2f} s, médiane {sorted(ecarts)[len(ecarts) // 2]:.2f} s")
+if ecarts:
+    print(f"Silences entre voix : minimum {min(ecarts):.2f} s, médiane {np.median(ecarts):.2f} s")
 print("Musique par rapport à la voix (pires pauses, en dB) :", sorted(marges, reverse=True)[:3])
 
 # Trous de son (16 nov. 2026 : « des coupures d'une scène à l'autre ») : plus de 0,25 s presque muet (< -55 dB) hors du
 # tout début et du fondu final = la musique s'est éteinte au changement de scène, ou un bout de son manque.
 n = SR // 20  # 50 ms
 env = 20 * np.log10(np.sqrt(np.mean(mix[:len(mix) // n * n].reshape(-1, n) ** 2, axis=1)) + 1e-9)
-muet, deb = 0, None
-for i, v in enumerate(env):
-    t = i * 0.05
-    if v < -55 and 1.0 < t < d["audio"] - 9:
-        deb = t if deb is None else deb
-        muet += 1
-    else:
-        if muet >= 5:
-            problemes.append(f"{mm(deb)} : trou de son de {muet * 0.05:.2f} s (musique coupée au changement de scène ?)")
-        muet, deb = 0, None
+attendu = np.zeros(len(env), dtype=bool)
+for son in m["sons"]:
+    if "Musique/themes/" not in son["fichier"].replace("\\", "/") or not son.get("duree"):
+        continue
+    debut = S[son["morceau"]] + son["dt"]
+    fin = debut + son["duree"]
+    i = max(0, round((debut + min(0.25, son.get("fondu_in", 0))) * 20))
+    j = min(len(env), round((fin - min(0.25, son.get("fondu_out", 0))) * 20),
+            max(0, round((d["audio"] - m.get("fin_son", 0.8)) * 20)))
+    if j > i:
+        attendu[i:j] = True
+bornes_trous = np.flatnonzero(np.diff(np.r_[False, attendu & (env < -55), False]))
+for i, j in bornes_trous.reshape(-1, 2):
+    if j - i >= 5:
+        problemes.append(f"{mm(i * 0.05)} : trou de son de {(j - i) * 0.05:.2f} s sur une plage musicale")
 # Bruits avant ou après une phrase : son fort dans le blanc qui entoure chaque voix (avant son premier mot / après son dernier)
 for s in m["sons"]:
     if s.get("voix"):
@@ -160,3 +166,19 @@ if pic > -1:
 print("\nRÉSULTAT :", "tout est bon" if not problemes else f"{len(problemes)} point(s) à regarder")
 for x in problemes:
     print(" -", x)
+
+if "--report" in sys.argv[2:]:
+    report = {
+        "video": video.name,
+        "video_duration_seconds": d["video"],
+        "audio_duration_seconds": d["audio"],
+        "integrated_lufs": lufs,
+        "peak_db": pic,
+        "warnings": problemes,
+        "status": "review" if problemes else "pass",
+        "voice_ranges": [
+            {"block": block, "start_seconds": round(start, 3), "end_seconds": round(end, 3)}
+            for block, start, end in voix
+        ],
+    }
+    (ep / "verification.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

@@ -42,6 +42,8 @@ python Outils/fabriquer.py <étape> <projet>
 | `episode.json` | Le montage calculé (ne pas retoucher à la main) | `plan` |
 | `A_REPRENDRE.md` | Où on en est, si une session s'arrête | Claude |
 
+Avant l'écriture, l'agent confirme la langue de narration si la demande ne la précise pas. Lors d'une reprise, il lit `montage_images.json` pour retrouver la langue et `A_REPRENDRE.md` pour identifier l'étape, les versions approuvées et la prochaine action. Avant le montage il lance `check`. Après la finalisation il lance `verify <projet> --report` et lit `verification.json`, qui inclut les plages de voix par bloc pour retrouver un retour horodaté.
+
 ## Règles de sécurité (apprises à nos dépens)
 - **Ne rien déplacer ni modifier dans un projet ou dans `Outils/` pendant un montage** : il lit les fichiers à la toute fin (rendu perdu le 8 nov.).
 - Si le texte change : corriger `script.md`, relancer `blocs`, puis ne régénérer **que les blocs concernés** (`voix --seulement b05,b09`). Avant de régénérer un bloc, enlever ses anciennes prises.
