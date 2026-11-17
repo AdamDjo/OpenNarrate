@@ -17,7 +17,9 @@ Les chemins propres à chaque PC sont dans `config.json` (modèle : `config.exem
 | `titres_png.py` | Dessine les textes à l'écran |
 | `verifier.py` | Contrôle automatique avant de montrer la vidéo |
 | `identite.py` | Met le logo et la bannière de la chaîne aux formats YouTube |
-| `miniature.py` | Pose le texte sur l'image d'une miniature |
+| `miniature.py` | Pose le texte sur l'image d'une miniature ; `--police=`, `--couleur=`, `--couleur2=` pour reprendre le thème de la vidéo, `--graisse=Black` (police variable épaisse), `--lueur=` (halo), `--largeur=` (taille du grand texte) |
+| `musique.py` | La bibliothèque de musique : liste les musiques par ambiance et refuse celles de `Musique/INTERDITES.txt` (réclamées par Content ID) |
+| `short.py` | Fabrique les Shorts verticaux d'une vidéo validée, avec sa voix et ses images, sous-titres compris (`shorts.json`, voir `Docs/shorts.md`) |
 
 ## Pour plus tard (non installés)
 Shorts verticaux automatiques, retouche du son sans refaire l'image, voix plus naturelle (Qwen3-TTS, MOSS-TTS), effet de profondeur 2.5D (DepthFlow).

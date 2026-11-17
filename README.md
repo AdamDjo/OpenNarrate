@@ -161,6 +161,7 @@ Pour animer des plans, lancez `python Outils/fabriquer.py animer <projet>` avant
 | [`Docs/images.md`](Docs/images.md) | Images, intro, fin et animations |
 | [`Docs/son_et_montage.md`](Docs/son_et_montage.md) | Son, titres, fin de vidéo, contrôle |
 | [`Docs/droits.md`](Docs/droits.md) | Droits et déclaration de l'IA |
+| [`Docs/publication.md`](Docs/publication.md) | Habiller la chaîne, ordre et heure de sortie, réglages de chaque vidéo |
 
 ## Limites actuelles
 

@@ -40,3 +40,7 @@ L'outil de vérification comprend mal les noms propres : un nom inventé mal ret
 | Voix artificielle sur les passages hachés | Relier les phrases (`ecriture.md`) |
 | Respirations audibles | `nettoyer`, qui protège les fins de mots |
 | Voix qui en recouvre une autre | `plan` garantit 0,7 s de silence entre deux blocs (`"ecarts_min"` pour plus) |
+| Voix de référence râpeuse qui grésille après génération | Garder la référence d'origine et filtrer seulement le résultat : `"filtre_voix": "adeclick,highshelf=f=4000:g=-9,lowpass=f=10000"` dans `montage_images.json`, appliqué par `nettoyer`. Mesurer d'abord (aigus 4-8 kHz, clics par seconde) par rapport à une voix validée, puis faire choisir à l'oreille. Adoucir la référence ou débruiter a donné une voix « éclatée » |
+
+## Marmonnements avant et après une phrase
+La voix de synthèse ajoute parfois un « aa aa » ou un bruit juste après le dernier mot d'une prise (plus rarement avant le premier). Le nettoyage ne les enlève pas, car ils ressemblent à de la voix. `voix_choisir.py` coupe donc chaque prise 0,25 s après le dernier mot entendu et commence 0,15 s avant le premier, avec un court fondu. Sur une vidéo de 7 min, cela a retiré 20 à 30 s de marmonnements.

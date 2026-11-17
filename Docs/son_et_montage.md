@@ -6,12 +6,14 @@ Vidéo 16:9, 1920×1080, 30 i/s. **La voix décide du rythme** : chaque plan dur
 | Règle | Valeur | Réglage |
 |---|---|---|
 | **La musique ne dépasse jamais la voix** | -36 LUFS, voix ≈ -24 | `CIBLE_MUSIQUE`, calcul automatique par fichier |
+| **Voix douce (narratrice) ou orchestre très plein** | `"cible_musique": -39` dans `montage_images.json` ; toutes les musiques sont creusées à 1-4 kHz sous la voix | `creux_voix`, automatique (« musique trop forte » alors que -36 était respecté) |
+| **Aucune musique réclamée** | Licence claire, crédit dans la description | `Musique/INTERDITES.txt`, `Outils/musique.py` refuse les musiques réclamées |
 | Pas de passage oublié sans musique | Tout silence doit être un choix | `"musiques"` de `montage_images.json` |
 | Une musique trop courte | Elle se répète seule | automatique |
 | Pas de fond sonore continu | Feu seulement à 2 ou 3 moments calmes, très bas | `"feu_passages"`, volume 0,12 à 0,15 |
 | **Peu de bruitages, jamais bizarres** | 1 ou 2 par vidéo, dans le doute aucun | `"bruitages"` |
 | Silence entre deux passages | 0,7 s minimum | `"ecarts_min"` pour plus |
-| Volume final | -14 LUFS, pics sous -1 dB | `montage` et `finir` |
+| Volume final | -14 LUFS, pics sous -1 dB | `montage`, puis `finir` mesure et corrige le volume (un rendu court sortait à -12,7) |
 
 Le volume seul ne veut rien dire : deux musiques au même réglage peuvent différer de 8 dB. On ne règle donc jamais une musique à la main.
 
@@ -32,3 +34,7 @@ Jamais de coupure nette : le narrateur invite à s'abonner, puis **écran de fin
 
 ## Le contrôle (`verifier`, obligatoire avant de montrer)
 Image et son de même durée, aucun chevauchement de voix, musique sous la voix, aucun plan figé ni noir, niveaux. Le rapport signale ce qui ne va pas. Il ne remplace pas une écoute : l'outil ne sait pas si c'est beau.
+
+## Pas de trou de son entre deux scènes
+Une musique qui s'arrête pile au changement de scène, avant que la suivante ne démarre en fondu, laisse 0,3 à 1 s de **silence total** : on l'entend comme une coupure, et le moindre bruit de la voix ressort. `plan_montage.py` fait maintenant un **fondu enchaîné** (`CHEVAUCHE`, 1,5 s) entre deux musiques qui se suivent, et la musique doit commencer **dès le bloc 1** (jamais d'intro sans musique). Si un morceau a lui-même un silence, le faire commencer plus loin (`"debut": 17.8` dans `"musiques"`).
+`verifier.py` signale tout **trou de son** (> 0,25 s sous -55 dB) et tout **bruit avant ou après une phrase** : une vidéo avec un de ces points n'est jamais montrée.

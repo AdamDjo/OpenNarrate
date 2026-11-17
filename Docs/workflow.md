@@ -23,7 +23,7 @@ python Outils/fabriquer.py <étape> <projet>
 | 7 | Montage | Claude | `plan` puis `montage` | `A_publier/<projet>_v1.mp4` |
 | 8 | Finalisation et contrôle automatique | Claude | `finir` puis `verifier` | Aperçu 720p + rapport |
 | ✅ | **Validation 3 : la vidéo (images fixes)** | **Toi** | | Tes retours, regroupés avant de relancer un montage |
-| Option | Animations, **seulement si tu les demandes** | Claude | `animer` puis `plan`, `montage` | `anim/clips/` : environ 2 h de calcul en plus. Sans clip, le montage utilise les images fixes |
+| Option | Animations : **Claude te pose toujours la question après la validation 3**, elles ne se font que si tu dis oui | Claude | `animer` puis `plan`, `montage` | `anim/clips/` : environ 2 h de calcul en plus. Sans clip, le montage utilise les images fixes |
 | 9 | Miniature, textes, Shorts | Claude | skill `storytelling-images`, `Modeles/checklist_publication.md` | Tout prêt à poster |
 | ✅ | **Une seule confirmation pour publier** | **Toi** | | Rien n'est publié sans ce « oui » |
 

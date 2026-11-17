@@ -1,0 +1,3 @@
+# Musiques réclamées par Content ID : plus aucun outil ne les accepte (voir Outils/musique.py).
+# Une ligne par musique :  nom_du_fichier.mp3 = titre réclamé, ayant droit
+# exemple_reclamee.mp3 = Epic Trailer Theme, réclamée par Exemple Music
