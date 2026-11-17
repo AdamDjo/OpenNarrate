@@ -1,4 +1,5 @@
 """Réglages propres à ce PC, lus dans config.json (à la racine, voir config.exemple.json). Une valeur vide est cherchée automatiquement."""
+import hashlib
 import json
 import shutil
 import sys
@@ -19,3 +20,12 @@ COMFY_ENTREE = CONFIG.get("comfy_entree") or ""
 # Polices : voir Polices/README.md
 POLICE_TITRES = CONFIG.get("police_titres") or str(RACINE / "Polices" / "titres.ttf")
 POLICE_PHRASE = CONFIG.get("police_phrase") or str(RACINE / "Polices" / "phrase.ttf")
+
+
+def media_fingerprint(settings, files):
+    """Identify generated media using its settings and input contents."""
+    digest = hashlib.sha256(json.dumps(settings, sort_keys=True).encode("utf-8"))
+    for file in files:
+        with Path(file).open("rb") as source:
+            digest.update(hashlib.file_digest(source, "sha256").digest())
+    return digest.hexdigest()

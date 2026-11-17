@@ -131,6 +131,8 @@ for b in blocs:
         z = [1.0, 1.08] if k % 2 == 0 else [1.08, 1.0]
         if cle == "F2":
             z = [1.04, 1.12]
+        if not conf.get("zoom_images", True):
+            z = [1.0, 1.0]
         dm = round(part if j < len(imgs) - 1 else max(3.0, total - part * (len(imgs) - 1)), 2)
         m = {"image": chemin, "duree": dm, "zoom": z, "centre": centre}
         # animation Wan disponible pour cette image ? (dossier anim/clips) → on l'utilise à la place de l'image fixe

@@ -59,9 +59,12 @@ args = sys.argv[1:]
 vitesse = float(option(args, "--vitesse", "0.88"))
 racine = Path(args[0])
 noms = args[1:] or sorted(p.name for p in racine.iterdir() if (p / "plan.json").exists())
+rapport = racine / "alertes.json"
 modele = WhisperModel("small", device="cpu", compute_type="int8")
 
 alertes = []
+if args[1:] and rapport.exists():
+    alertes = [a for a in json.loads(rapport.read_text(encoding="utf-8")) if a["bloc"] not in noms]
 for nom in noms:
     d = racine / nom
     plan = json.loads((d / "plan.json").read_text(encoding="utf-8"))
@@ -131,6 +134,8 @@ for nom in noms:
     (racine / "_bruts" / f"{nom}.wav").unlink(missing_ok=True)  # l'ancienne version non nettoyée n'est plus valable
     print(f"=> {racine / (nom + '.wav')}", flush=True)
 
-(racine / "alertes.json").write_text(json.dumps(alertes, ensure_ascii=False, indent=1), encoding="utf-8")
+temporaire = rapport.with_suffix(".tmp")
+temporaire.write_text(json.dumps(alertes, ensure_ascii=False, indent=1), encoding="utf-8")
+temporaire.replace(rapport)
 print(f"{len(alertes)} morceau(x) en alerte -> {racine / 'alertes.json'}"
       + (" (à refaire : voix_narrateur.py … --refaire alertes.json --prises 3)" if alertes else ""), flush=True)

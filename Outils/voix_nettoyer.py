@@ -9,6 +9,7 @@ Pour chaque bNN.wav :
 L'original est gardé dans <dossier>/_bruts/. Relancer voix_choisir.py écrase le nettoyage : relancer ce script ensuite.
 """
 import difflib
+import argparse
 import json
 import re
 import shutil
@@ -103,12 +104,17 @@ def texte_bloc(nom):
     return set()
 
 
-racine = Path(sys.argv[1])
-noms = sys.argv[2:] or sorted(p.stem for p in racine.glob("b*.wav"))
+parser = argparse.ArgumentParser(description="Clean assembled narration WAV files.")
+parser.add_argument("directory", type=Path)
+parser.add_argument("blocks", nargs="*")
+parser.add_argument("--langue", "--language")
+args = parser.parse_args()
+racine = args.directory
+noms = args.blocks or sorted(p.stem for p in racine.glob("b*.wav"))
 modele = WhisperModel("small", device="cpu", compute_type="int8")
 # langue lue dans le plan.json d'un bloc (voix_narrateur.py --langue en pour la piste anglaise)
 _plans = sorted(racine.glob("b*/plan.json"))
-LANGUE = json.loads(_plans[0].read_text(encoding="utf-8")).get("langue", "fr") if _plans else "fr"
+LANGUE = args.langue or (json.loads(_plans[0].read_text(encoding="utf-8")).get("langue", "fr") if _plans else "fr")
 (racine / "_bruts").mkdir(exist_ok=True)
 # "filtre_voix" dans montage_images.json : filtre ffmpeg propre à une voix (ex. voix râpeuse, Docs/voix.md)
 reglages = racine.parent.parent / "montage_images.json"
