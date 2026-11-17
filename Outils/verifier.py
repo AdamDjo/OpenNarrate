@@ -110,6 +110,33 @@ for s in m["sons"]:
                 problemes.append(f"{s['fichier'][-7:-4]} : bruit avant ou après la phrase (à écouter)")
                 break
 
+# Bouts de voix isolés (on les entend comme des « coupures bizarres ») : un son de moins de 0,35 s entouré
+# d'au moins 0,25 s de silence, à l'intérieur d'une voix = marmonnement de l'IA resté entre deux phrases, ou mot coupé.
+# voix_nettoyer.py les retire ; s'il en reste, relancer « nettoyer » sur ce bloc.
+for s in m["sons"]:
+    if s.get("voix"):
+        x = lire(ep / s["fichier"])
+        pas = SR // 50  # 20 ms
+        e = 20 * np.log10(np.sqrt(np.mean(x[:len(x) // pas * pas].reshape(-1, pas) ** 2, axis=1)) + 1e-9)
+        runs, i = [], 0
+        while i < len(e):
+            if e[i] > -45:
+                j = i
+                while j < len(e) and e[j] > -45:
+                    j += 1
+                if runs and (i - runs[-1][1]) * 0.02 < 0.12:
+                    runs[-1] = (runs[-1][0], j)
+                else:
+                    runs.append((i, j))
+                i = j
+            else:
+                i += 1
+        for k, (i, j) in enumerate(runs):
+            avant = (i - (runs[k - 1][1] if k else 0)) * 0.02
+            apres = ((runs[k + 1][0] if k + 1 < len(runs) else len(e)) - j) * 0.02
+            if (j - i) * 0.02 < 0.35 and avant >= 0.25 and (apres >= 0.25 or k + 1 == len(runs)):
+                problemes.append(f"{mm(S[s['morceau']] + s['dt'] + i * 0.02)} : bout de voix isolé dans {s['fichier'][-7:-4]} (relancer « nettoyer »)")
+
 # Plans figés ou noirs (le fondu final est normal)
 fin = d["video"] - 3.5
 err = subprocess.run([FFMPEG, "-hide_banner", "-nostats", "-i", str(video), "-an", "-vf",

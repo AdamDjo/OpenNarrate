@@ -9,7 +9,10 @@ Vidéo 16:9, 1920×1080, 30 i/s. **La voix décide du rythme** : chaque plan dur
 | **Voix douce (narratrice) ou orchestre très plein** | `"cible_musique": -39` dans `montage_images.json` ; toutes les musiques sont creusées à 1-4 kHz sous la voix | `creux_voix`, automatique (« musique trop forte » alors que -36 était respecté) |
 | **Aucune musique réclamée** | Licence claire, crédit dans la description | `Musique/INTERDITES.txt`, `Outils/musique.py` refuse les musiques réclamées |
 | Pas de passage oublié sans musique | Tout silence doit être un choix | `"musiques"` de `montage_images.json` |
-| Une musique trop courte | Elle se répète seule | automatique |
+| Une musique trop courte | Elle est relancée en fondu enchaîné juste avant son silence de fin (une simple répétition laissait un trou de 5 s) | automatique (`fin_utile`) |
+| **Pas de bout de voix isolé** | Un son de moins de 0,35 s entre deux silences (marmonnement de l'IA, mot coupé) s'entend comme une « coupure bizarre » | `nettoyer` les retire, `verifier` les signale ; bords de chaque voix en fondu |
+| Baisse de la musique sous la voix | Douce (ratio 3, relâche 0,7 s) : sinon la musique « pompe » à chaque pause | `montage` |
+| Silence au début d'une musique | Sauté automatiquement | `debut_utile` |
 | Pas de fond sonore continu | Feu seulement à 2 ou 3 moments calmes, très bas | `"feu_passages"`, volume 0,12 à 0,15 |
 | **Peu de bruitages, jamais bizarres** | 1 ou 2 par vidéo, dans le doute aucun | `"bruitages"` |
 | Silence entre deux passages | 0,7 s minimum | `"ecarts_min"` pour plus |
