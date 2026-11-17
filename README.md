@@ -18,6 +18,28 @@ Review the script first, then the images and a voice sample, then the edited vid
 
 To use the [`videomaker` agent](.claude/agents/videomaker.md), run `claude --agent videomaker` from the repository root and ask, for example, “Make an English video about the Egyptian pyramids.” If you provide only a topic, the agent asks for the narration language. It records approvals and the next action in the episode's `A_REPRENDRE.md`, so you can resume the project in a later session.
 
+## Example: from script to video
+
+Each shot in `script.md` starts with a visual cue. The quoted lines contain the narration, and `[#3]` points to a claim in `sources.md`. Here's an English adaptation of one shot from the pyramids demo:
+
+```markdown
+📜 CARNET — A map of the Nile, with small boats carrying limestone.
+
+> {confidence} Merer's journal describes carrying limestone by boat to Giza. [#3]
+```
+
+The `blocks` command turns the script into numbered blocks. In `montage_images.json`, assign one or more image aliases to each block. Once the images and narration are ready, run:
+
+```powershell
+python Outils/fabriquer.py check my-story
+python Outils/fabriquer.py plan my-story
+python Outils/fabriquer.py render my-story
+python Outils/fabriquer.py finish my-story
+python Outils/fabriquer.py verify my-story --report
+```
+
+The MP4 and its 720p preview appear in `A_publier/`. The episode's `verification.json` lists audio and video warnings and maps voice blocks to timestamps. Browse the demo's [script](Exemples/pyramides/script.md), [source notes](Exemples/pyramides/sources.md), and [image configuration](Exemples/pyramides/montage_images.json) to see how they fit together.
+
 ## Try the renderer
 
 The production workflow was developed on **Windows with an NVIDIA GPU**. To try rendering on a CPU, install Python 3.12, NumPy and FFmpeg with FFprobe available on your PATH. Run this from the repository root:
