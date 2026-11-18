@@ -8,6 +8,8 @@
 
 [Watch the 69-second pyramids demo (French audio)](Exemples/pyramides/apercu.mp4) · [Browse the example project (French)](Exemples/pyramides/)
 
+[Watch the 41-second workflow walkthrough (English audio)](Exemples/walkthrough/opennarrate.en.mp4) · [English captions (.srt)](Exemples/walkthrough/opennarrate.en.srt)
+
 ## How it works
 
 You can direct the production through Claude Code or run the individual steps yourself. Bring your own images and narration, or generate illustrations with Codex and narration locally with Chatterbox. Faster Whisper reviews the voice takes and aligns words for Short captions. FFmpeg produces the video.
