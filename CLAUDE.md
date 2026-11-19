@@ -18,4 +18,4 @@ Un sujet donne une vidéo racontée. Réponds dans la langue de l'utilisateur, s
 - L'IA est toujours déclarée sur les plateformes. Rien n'est publié sans l'accord de l'utilisateur.
 
 ## Partage
-Ne jamais ajouter au dépôt : voix de référence, musiques, images de projets, vidéos ni `config.json` (`Docs/droits.md`). Seule exception : l'exemple libre de `Exemples/pyramides/` et les captures de `Docs/assets/`.
+Ne jamais ajouter au dépôt : voix de référence, musiques, images de projets, vidéos ni `config.json` (`Docs/droits.md`). Exceptions : l'exemple libre de `Exemples/pyramides/`, la vidéo explicative approuvée dans `Exemples/walkthrough/` et les captures de `Docs/assets/`.

@@ -4,7 +4,8 @@ Usage (Python 3.12 du système, qui a faster-whisper) :
   python -I Outils\\voix\\voix_choisir.py <dossier_sortie> [--vitesse 0.92] [nom1 nom2 ...]
 Pour chaque <dossier_sortie>/<nom>/plan.json :
   - transcrit toutes les prises, note la ressemblance avec le texte (0 à 1) et le débit (mots/s) ;
-  - garde la meilleure prise ; ⚠️ si ressemblance < 0.80 ou débit anormal (> 3.6 ou < 1.3 mots/s) ;
+  - privilégie le texte fidèle, puis départage selon le débit et les bruits en bordure ;
+  - signale les transcriptions peu fiables, le débit encore excessif après correction et les bruits en bordure ;
   - assemble : prises choisies + pauses du plan, ralenti --vitesse (ffmpeg atempo, même hauteur de voix),
     → <dossier_sortie>/<nom>.wav ; rapport dans <dossier_sortie>/<nom>/choix.json.
 """
@@ -27,6 +28,9 @@ from commun import FFMPEG
 
 DEBIT_MAX = 3.15   # mots/s après ralenti (≈ 190 mots/min) : au-delà, le morceau est ralenti automatiquement
 ATEMPO_MIN = 0.72  # ralenti maximal, pour ne pas déformer la voix
+DEBIT_MIN = 1.3
+DEBIT_CIBLE = 2.6
+BRUIT_BORD = 10 ** (-36 / 20)
 
 
 def option(args, nom, defaut):
@@ -55,6 +59,18 @@ def lire16k(f):
     return np.frombuffer(out, dtype=np.int16).astype(np.float32) / 32768
 
 
+def bruit_bord(audio, debut, fin):
+    """Measure the strongest 20 ms RMS outside the transcribed speech."""
+    zones = (audio[:max(0, round((debut - 0.15) * 16000))],
+             audio[round((fin + 0.25) * 16000):])
+    niveaux = []
+    for zone in zones:
+        trames = zone[:len(zone) // 320 * 320].reshape(-1, 320)
+        if len(trames):
+            niveaux.append(float(np.sqrt(np.mean(trames ** 2, axis=1)).max()))
+    return max(niveaux, default=0.0)
+
+
 args = sys.argv[1:]
 vitesse = float(option(args, "--vitesse", "0.88"))
 racine = Path(args[0])
@@ -75,6 +91,8 @@ for nom in noms:
         attendu = [w for w in norme(m["texte"])]
         meilleur = None
         for f in sorted(d.glob(f"c{i:02d}_p*.wav")):
+            if not re.fullmatch(rf"c{i:02d}_p\d+\.wav", f.name):
+                continue
             audio = lire16k(f)
             cle = f"{f.name}:{f.stat().st_mtime_ns}"
             if cle not in cache or f"{cle}:debut" not in cache:
@@ -85,24 +103,36 @@ for nom in noms:
             entendu = cache[cle]
             fin_mots, debut_mots = cache[f"{cle}:fin"], cache[f"{cle}:debut"]
             score = difflib.SequenceMatcher(None, attendu, norme(entendu)).ratio()
-            debit = len(m["texte"].split()) / max(len(audio) / 16000, 0.1)
-            ok_debit = 1.3 <= debit <= 3.6
-            note = score - (0 if ok_debit else 0.3)
-            if meilleur is None or note > meilleur["note"]:
-                meilleur = {"fichier": f.name, "score": round(score, 2), "debit": round(debit, 2), "note": note, "entendu": entendu.strip(),
-                            "fin_mots": fin_mots, "debut_mots": debut_mots, "duree": round(len(audio) / 16000, 2)}
-        alerte = meilleur["score"] < 0.72 or not (1.3 <= meilleur["debit"] <= 3.6)
+            duree = len(audio) / 16000
+            parole = debut_mots is not None and fin_mots is not None and fin_mots > debut_mots
+            debit = len(m["texte"].split()) / max(fin_mots - debut_mots if parole else duree, 0.1)
+            tempo = vitesse * m.get("tempo", 1.0)
+            if debit * tempo > DEBIT_MAX:
+                tempo = max(ATEMPO_MIN, DEBIT_MAX / debit)
+            vitesse_limite = debit * tempo > DEBIT_MAX + 0.01
+            bruit = bruit_bord(audio, debut_mots, fin_mots) if parole else 0.0
+            raisons = []
+            if score < 0.72 or not parole:
+                raisons.append("transcription")
+            if debit * tempo < DEBIT_MIN or vitesse_limite:
+                raisons.append("speaking_rate")
+            if bruit > BRUIT_BORD:
+                raisons.append("edge_noise")
+            classement = (parole, score, not raisons, bruit <= BRUIT_BORD, -abs(debit * tempo - DEBIT_CIBLE), -bruit)
+            if meilleur is None or classement > meilleur_classement:
+                meilleur_classement = classement
+                meilleur = {"fichier": f.name, "score": round(score, 2), "debit": round(debit, 2), "note": score, "entendu": entendu.strip(),
+                            "fin_mots": fin_mots, "debut_mots": debut_mots, "duree": duree,
+                            "tempo_final": round(tempo, 3), "reasons": raisons}
+        if meilleur is None:
+            sys.exit(f"No complete takes for {nom} c{i:02d}")
+        alerte = bool(meilleur["reasons"])
         meilleur["alerte"] = alerte
         meilleur["texte"] = m["texte"]
         if alerte:
-            alertes.append({"bloc": nom, "morceau": i, "texte": m["texte"], "score": meilleur["score"], "debit": meilleur["debit"]})
+            alertes.append({"bloc": nom, "morceau": i, "texte": m["texte"], "score": meilleur["score"],
+                            "debit": meilleur["debit"], "reasons": meilleur["reasons"]})
         choix.append(meilleur)
-        # plafond de débit : l'outil de voix accélère tout seul sur certaines phrases (« il parle trop vite »)
-        tempo = m.get("tempo", 1.0)
-        final = meilleur["debit"] * vitesse * tempo        # mots/s après ralenti
-        if final > DEBIT_MAX:
-            tempo = max(ATEMPO_MIN / vitesse, tempo * DEBIT_MAX / final)
-        meilleur["tempo_final"] = round(vitesse * tempo, 3)
         # la voix IA ajoute parfois des marmonnements après le dernier mot (« aa aa », 16 nov. 2026
         # déjà vu sur les Shorts) : on coupe 0,25 s après le dernier mot entendu, avec un fondu
         # (et parfois AVANT le premier mot : on commence 0,15 s avant lui)
@@ -110,7 +140,7 @@ for nom in noms:
         if meilleur.get("fin_mots") and meilleur["fin_mots"] + 0.25 < meilleur["duree"]:
             coupe = meilleur["fin_mots"] + 0.25
         debut = meilleur["debut_mots"] - 0.15 if (meilleur.get("debut_mots") or 0) > 0.4 else None
-        liste.append((d / meilleur["fichier"], m["pause"], tempo, m.get("volume_db", 0), coupe, debut))
+        liste.append((d / meilleur["fichier"], m["pause"], meilleur["tempo_final"], m.get("volume_db", 0), coupe, debut))
         print(f"{nom} c{i:02d} {'ALERTE' if alerte else 'ok'} score {meilleur['score']} debit {meilleur['debit']} | {meilleur['entendu']}", flush=True)
     (d / "choix.json").write_text(json.dumps(choix, ensure_ascii=False, indent=1), encoding="utf-8")
     cache_f.write_text(json.dumps(cache, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -126,7 +156,7 @@ for nom in noms:
         if debut:
             fin += "afade=t=in:d=0.05,"
         # ralenti global × rythme de l'émotion (triste = plus lent…), volume de l'émotion, puis la pause
-        filtres.append(f"[{k}]{fin}aresample=24000,atempo={vitesse * tempo:.3f},volume={vol}dB,"
+        filtres.append(f"[{k}]{fin}aresample=24000,atempo={tempo:.3f},volume={vol}dB,"
                        f"apad=pad_dur={pause if k < len(liste) - 1 else 0}[a{k}]")
     concat = "".join(f"[a{k}]" for k in range(len(liste))) + f"concat=n={len(liste)}:v=0:a=1[out]"
     subprocess.run([FFMPEG, "-v", "error", "-y", *entrees, "-filter_complex", ";".join(filtres) + ";" + concat,
