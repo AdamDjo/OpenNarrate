@@ -118,7 +118,24 @@ LANGUE = args.langue or (json.loads(_plans[0].read_text(encoding="utf-8")).get("
 (racine / "_bruts").mkdir(exist_ok=True)
 # "filtre_voix" dans montage_images.json : filtre ffmpeg propre à une voix (ex. voix râpeuse, Docs/voix.md)
 reglages = racine.parent.parent / "montage_images.json"
-filtre_voix = json.loads(reglages.read_text(encoding="utf-8")).get("filtre_voix", "") if reglages.exists() else ""
+_r = json.loads(reglages.read_text(encoding="utf-8")) if reglages.exists() else {}
+filtre_voix = _r.get("filtre_voix", "")
+# Deux voix dans une vidéo (ex. un personnage qui se transforme) :
+#  "voix_sans_filtre": ["b02-b22"]  → ces blocs gardent la voix sans filtre_voix ;
+#  "transition_voix": {"bloc": "b22", "morceau": 3, "duree": 3.0} → dans ce bloc, la voix passe de « sans filtre »
+#  à « avec filtre » en `duree` secondes, à partir du début du morceau n° `morceau` (debuts.json écrit par voix_choisir.py).
+
+
+def _numeros(liste):
+    out = set()
+    for x in liste:
+        a, _, b = x.partition("-")
+        out.update(range(int(a.lstrip("b")), int((b or a).lstrip("b")) + 1))
+    return out
+
+
+SANS_FILTRE = _numeros(_r.get("voix_sans_filtre", []))
+TRANSITION = _r.get("transition_voix") or {}
 for nom in noms:
     f = racine / f"{nom}.wav"
     brut = racine / "_bruts" / f"{nom}.wav"
@@ -165,8 +182,31 @@ for nom in noms:
     pic = 20 * np.log10(float(np.abs(bruit).max()) + 1e-9) if len(bruit) else -120
     etat = "ok" if ratio >= 0.93 and len(t1) >= len(t0) - 2 else "ALERTE"
     print(f"{nom} {etat} mots {len(t0)}->{len(t1)} ressemblance {ratio:.2f} | hors-mots {100 * (~garde).mean():.0f} % du temps, pic retiré {pic:.0f} dB", flush=True)
-    if filtre_voix:   # dernier traitement, après le contrôle ; comme on repart de _bruts, il ne s'applique jamais deux fois
+    num = int(nom.lstrip("b")) if nom.lstrip("b").isdigit() else -1
+    en_transition = TRANSITION.get("bloc") == nom
+    if filtre_voix and (num not in SANS_FILTRE or en_transition):
+        # dernier traitement, après le contrôle ; comme on repart de _bruts, il ne s'applique jamais deux fois
         tmp = f.with_suffix(".filtre.wav")
         subprocess.run([FFMPEG, "-v", "error", "-y", "-i", str(f), "-af", filtre_voix, "-ac", "1", "-ar", str(SR),
                         "-c:a", "pcm_s16le", str(tmp)], check=True)
-        tmp.replace(f)
+        if en_transition:
+            sec = lire(f, SR)
+            mouille = lire(tmp, SR)
+            sec = np.pad(sec, (0, max(0, len(mouille) - len(sec))))[:len(mouille)]
+            debuts = json.loads((racine / nom / "debuts.json").read_text(encoding="utf-8"))
+            t0 = debuts[int(TRANSITION.get("morceau", len(debuts))) - 1]
+            duree = float(TRANSITION.get("duree", 3.0))
+            g = float(np.sqrt((mouille ** 2).mean()) / (np.sqrt((sec ** 2).mean()) + 1e-9))
+            rampe = np.clip((np.arange(len(mouille)) / SR - t0) / duree, 0, 1).astype(np.float32)
+            mix = sec * min(g, 2.0) * (1 - rampe) + mouille * rampe
+            crete = float(np.abs(mix).max())
+            ecrire(f, mix * (0.89 / crete) if crete > 0.89 else mix)
+            tmp.unlink()
+            print(f"{nom} transition de voix à {t0:.1f} s sur {duree:.1f} s", flush=True)
+        else:
+            tmp.replace(f)
+        # contrôle de saturation : un effet qui ajoute du gain doit commencer par volume=-3dB et finir par alimiter
+        sat = int((np.abs(lire(f, SR)) > 0.985).sum())
+        if sat:
+            print(f"{nom} ALERTE saturation : {sat} échantillons écrêtés après filtre_voix "
+                  f"(baisser son entrée ou ajouter alimiter, Docs/voix.md)", flush=True)

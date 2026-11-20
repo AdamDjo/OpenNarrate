@@ -157,6 +157,11 @@ if __name__ == "__main__":
                 w = modele.generate(prononcer(m["texte"]), language_id=langue,
                                     audio_prompt_path=str(ref) if ref is not None else None,
                                     exaggeration=e["exag"], cfg_weight=e["cfg"]).cpu()
+                # certaines voix sortent ~8 dB plus fort que d'autres et saturaient dès l'enregistrement :
+                # on ramène la crête à -3 dB, jamais plus haut
+                crete = float(w.abs().max())
+                if crete > 0.708:
+                    w = w * (0.708 / crete)
                 # écriture puis renommage : si le PC s'éteint en plein milieu, pas de prise à moitié écrite
                 tmpf = f.with_name(f.stem + "_tmp.wav")
                 torchaudio.save(str(tmpf), w, modele.sr)
