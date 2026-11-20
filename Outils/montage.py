@@ -10,6 +10,9 @@ Lit la section "magique" de <projet>\episode.json (écrit par plan_montage.py) :
   sons     : [{fichier, morceau, dt, debut?, duree?, volume?, fondu_in?, fondu_out?, grave?, echo?}]
   bloom    : 0-1 (halo lumineux, défaut 0.25)
 Clips pris dans clips/hd/ (agrandis par RealESRGAN, fait automatiquement). Résultat : A_publier\<dossier>.mp4
+--ecoute : SEULEMENT le son de la vidéo (voix, pauses, musiques, bruitages) en ~1 min → A_publier\<nom>_ECOUTE.m4a, avec l'heure
+           de début de chaque voix et le contrôle de saturation. À écouter AVANT le rendu : un défaut de son trouvé après
+           un rendu complet coûte 30 à 40 min.
 """
 import json, shutil, subprocess, sys, tempfile, time, urllib.parse, urllib.request
 from pathlib import Path
@@ -22,7 +25,8 @@ CONF = json.loads((DOSSIER / "episode.json").read_text(encoding="utf8"))["magiqu
 THEME = CONF.get("theme_titres") or {}  # chaque vidéo a son thème de titres : police, couleurs, placement (montage_images.json)
 if THEME.get("police"):
     POLICE = RACINE / THEME["police"]
-SORTIE = RACINE / "A_publier" / f"{CONF.get('nom', DOSSIER.name)}.mp4"
+ECOUTE = "--ecoute" in sys.argv
+SORTIE = RACINE / "A_publier" / (f"{CONF.get('nom', DOSSIER.name)}_ECOUTE.m4a" if ECOUTE else f"{CONF.get('nom', DOSSIER.name)}.mp4")
 W, H = (1080, 1920) if CONF.get("format") == "9:16" else (1920, 1080)
 FPS = 30
 
@@ -68,6 +72,15 @@ def boucle_sans_saut(src, t=0.5):
     return dest
 
 
+def duree_morceau(m):
+    """Durée d'un morceau dans la vidéo, calculée comme dans la boucle de rendu (sert à --ecoute)."""
+    if m.get("image") or m.get("boucle"):
+        d = max(1, round(m["duree"] * FPS)) / FPS
+    else:
+        d = max(1, round((m["a"] - m["de"]) / m.get("vitesse", 1.0) * FPS)) / FPS
+    return d + round(m.get("gel", 0) * FPS) / FPS
+
+
 def camera(m, d):
     """Zoom doux (ease in-out) vers un point + secousse d'impact qui s'amortit."""
     z0, z1 = m.get("zoom", [1.0, 1.0])
@@ -94,6 +107,9 @@ with tempfile.TemporaryDirectory(dir=DOSSIER, prefix=".render-") as tmp:
     cache.mkdir(exist_ok=True)
     engine_files = [Path(__file__), Path(__file__).with_name("kenburns.py")]
     for i, m in enumerate(CONF["morceaux"]):
+        if ECOUTE:  # même durée que dans la vraie vidéo, sans fabriquer l'image
+            durees.append(duree_morceau(m))
+            continue
         sortie = str(tmp / f"m{i}.mp4")
         cached = None
         if m.get("image"):
@@ -182,14 +198,14 @@ with tempfile.TemporaryDirectory(dir=DOSSIER, prefix=".render-") as tmp:
         prec = f"x{i}"
         t += durees[i]
     total = t
+    titres = CONF.get("titres", [])
 
     b = CONF.get("bloom", 0.25)
     f += (f"[{prec}]eq=contrast=1.08:saturation=1.12:gamma=0.97,"
           f"colorbalance=rs=0.03:bs=-0.02:rh=0.03:bh=-0.04,split[n][h];[h]gblur=sigma=22[hb];"
           f"[n][hb]blend=all_mode=screen:all_opacity={b},vignette=PI/4.5,unsharp=5:5:0.35")  # plus de grain animé (il « fourmillait »)
     # textes à l'écran : PNG dessinés par Outils/titres_png.py (voile doux, doré dégradé, ornement), posés en fondu
-    titres = CONF.get("titres", [])
-    if titres:
+    if titres and not ECOUTE:
         (tmp / "titres.json").write_text(json.dumps(titres, ensure_ascii=False), encoding="utf8")
         (tmp / "theme.json").write_text(json.dumps(THEME, ensure_ascii=False), encoding="utf8")
         subprocess.run([str(VENV), str(RACINE / "Outils" / "titres_png.py"), str(tmp), str(POLICE)], check=True)
@@ -203,7 +219,9 @@ with tempfile.TemporaryDirectory(dir=DOSSIER, prefix=".render-") as tmp:
     image_fade = min(total, CONF.get("fin_image", 0.6))
     f += f";[base{len(titres)}]fade=in:st=0:d=0.25,fade=out:st={total-image_fade:.3f}:d={image_fade}[vid]"
 
-    pistes, voix, na = [], [], len(durees)
+    if ECOUTE:  # pas d'image : on ne garde que le son
+        f = ""
+    pistes, voix, na = [], [], (0 if ECOUTE else len(durees))
     for s in CONF.get("sons", []):
         ms = max(0, int((debuts[s["morceau"]] + s.get("dt", 0)) * 1000))
         entrees += (["-stream_loop", "-1"] if s.get("boucle") else []) + ["-ss", str(s.get("debut", 0)), "-i", str(DOSSIER / s["fichier"])]
@@ -234,6 +252,20 @@ with tempfile.TemporaryDirectory(dir=DOSSIER, prefix=".render-") as tmp:
     f += (f",atrim=0:{total:.3f},"
           f"afade=out:st={total-audio_fade:.3f}:d={audio_fade},loudnorm=I=-14:TP=-1.5:LRA=11,alimiter=limit=0.89[aud]")
     SORTIE.parent.mkdir(parents=True, exist_ok=True)
+    if ECOUTE:
+        run(*entrees, "-filter_complex", f.lstrip(";"), "-map", "[aud]", "-c:a", "aac", "-b:a", "192k", str(SORTIE), cwd=tmp)
+        import numpy as np
+        print("Début de chaque voix et contrôle de saturation (échantillons écrêtés) :")
+        for s in CONF.get("sons", []):
+            if not s.get("voix"):
+                continue
+            a = np.frombuffer(subprocess.run([FFMPEG, "-v", "error", "-i", str(DOSSIER / s["fichier"]), "-ac", "1",
+                                              "-f", "f32le", "-"], capture_output=True, check=True).stdout, dtype=np.float32)
+            sat = int((np.abs(a) > 0.985).sum())
+            t0 = debuts[s["morceau"]] + s.get("dt", 0)
+            print(f"  {int(t0 // 60)}:{t0 % 60:04.1f}  {Path(s['fichier']).stem:5s}" + (f"  ATTENTION saturation {sat}" if sat else ""))
+        print("Terminé :", SORTIE, f"({total:.1f} s)")
+        sys.exit(0)
     with tempfile.TemporaryDirectory(dir=SORTIE.parent, prefix=".render-") as staging:
         rendered = Path(staging) / SORTIE.name
         run(*entrees, "-filter_complex", f, "-map", "[vid]", "-map", "[aud]", "-c:v", "libx264", "-crf", "17",

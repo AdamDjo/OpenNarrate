@@ -9,6 +9,7 @@
   clean [--only b05,b09]  Clean assembled narration
   animate [shot]          Generate optional animated shots
   plan                    Build the render plan and pick the next version
+  listen                  Render ONLY the audio (~1 min) with voice checks: listen BEFORE rendering
   render                  Render the planned video
   finish                  Limit audio peaks and export a 720p preview
   verify [--report]       Check audio and video, optionally save JSON
@@ -29,7 +30,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 EPISODES, OUTILS = RACINE / "Episodes", RACINE / "Outils"
 COMMANDS = {
     "new": "nouveau", "blocks": "blocs", "voice": "voix", "select": "choisir", "retry": "refaire",
-    "clean": "nettoyer", "animate": "animer", "render": "montage", "finish": "finir", "verify": "verifier",
+    "clean": "nettoyer", "animate": "animer", "render": "montage", "listen": "ecoute", "finish": "finir", "verify": "verifier",
 }
 FRENCH_HELP = """Utilisation : python Outils/fabriquer.py <commande> <projet> [options]
   nouveau AAAA-MM-JJ_sujet [--language en|fr]  Crée un projet depuis le modèle
@@ -42,6 +43,7 @@ FRENCH_HELP = """Utilisation : python Outils/fabriquer.py <commande> <projet> [o
   nettoyer [--seulement b05,b09]  Nettoie la narration
   animer [plan]                  Anime les plans sélectionnés
   plan                           Calcule le plan de montage
+  ecoute                         Seulement le son (~1 min) + contrôle des voix : à écouter AVANT le montage
   montage                        Produit la vidéo
   finir                          Limite les pics et crée un aperçu 720p
   verifier [--report]            Contrôle le rendu et peut écrire un rapport JSON
@@ -274,6 +276,8 @@ def main():
         outils("animer.py", ep / "anim", *args, "--qualite")
     elif etape == "plan":
         outils("plan_montage.py", ep, args[0] if args else version_suivante(ep))
+    elif etape == "ecoute":
+        outils("montage.py", ep.relative_to(RACINE), "--ecoute")
     elif etape == "montage":
         outils("montage.py", ep.relative_to(RACINE))
     elif etape == "verifier":
