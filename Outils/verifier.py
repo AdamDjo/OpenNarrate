@@ -102,10 +102,15 @@ for son in m["sons"]:
             max(0, round((d["audio"] - m.get("fin_son", 0.8)) * 20)))
     if j > i:
         attendu[i:j] = True
-bornes_trous = np.flatnonzero(np.diff(np.r_[False, attendu & (env < -55), False]))
+# Toute la vidéo est contrôlée (hors 1re seconde et 9 dernières), en plus des plages musicales prévues : un silence ENTRE
+# deux musiques (l'une finit, l'autre démarre plus tard) est justement la coupure du 16-17 nov. (correction du 20 nov.).
+t = np.arange(len(env)) * 0.05
+zone = attendu | ((t > 1.0) & (t < d["audio"] - 9))
+bornes_trous = np.flatnonzero(np.diff(np.r_[False, zone & (env < -55), False]))
 for i, j in bornes_trous.reshape(-1, 2):
     if j - i >= 5:
-        problemes.append(f"{mm(i * 0.05)} : trou de son de {(j - i) * 0.05:.2f} s sur une plage musicale")
+        ou = "sur une plage musicale" if attendu[i:j].any() else "entre deux musiques ?"
+        problemes.append(f"{mm(i * 0.05)} : trou de son de {(j - i) * 0.05:.2f} s ({ou})")
 # Bruits avant ou après une phrase : son fort dans le blanc qui entoure chaque voix (avant son premier mot / après son dernier)
 for s in m["sons"]:
     if s.get("voix"):
