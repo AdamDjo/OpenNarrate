@@ -42,5 +42,19 @@ L'outil de vérification comprend mal les noms propres : un nom inventé mal ret
 | Voix qui en recouvre une autre | `plan` garantit 0,7 s de silence entre deux blocs (`"ecarts_min"` pour plus) |
 | Voix de référence râpeuse qui grésille après génération | Garder la référence d'origine et filtrer seulement le résultat : `"filtre_voix": "adeclick,highshelf=f=4000:g=-9,lowpass=f=10000"` dans `montage_images.json`, appliqué par `nettoyer`. Mesurer d'abord (aigus 4-8 kHz, clics par seconde) par rapport à une voix validée, puis faire choisir à l'oreille. Adoucir la référence ou débruiter a donné une voix « éclatée » |
 
+## Qualité de la voix : les pièges à éviter
+1. **Ralenti trop fort** : le débit doit être mesuré sur **toute la prise**. Mesuré sur la seule parole, il paraît plus élevé, le ralenti descend vers 0,77 et la voix « dérape ». Une voix qui parle naturellement vite se règle par vidéo dans `montage_images.json` : `"vitesse_voix"`, `"debit_max_voix"`, `"ralenti_min_voix"`, et `"etirement_voix": "rubberband"` (ralenti de meilleure qualité qu'`atempo`).
+2. **Saturation à la source** : certaines voix sortent ~8 dB plus fort que d'autres. `voix_narrateur.py` ramène toute prise à -3 dB de crête, `voix_choisir.py` finit par un limiteur, `voix_nettoyer.py` affiche une ALERTE saturation.
+3. **Timbre qui change d'une prise à l'autre** : la référence doit durer **15 à 20 s**. Si la réplique est courte, la compléter avec une autre réplique de la **même voix** (vérifier avec `Outils/voix_ressemblance.py`, ≥ 0,9).
+4. **Prise qui répète ou invente des mots à la fin** : `voix_choisir.py` écarte d'abord les prises avec des mots ajoutés après la fin de la phrase (raison `mots_en_trop`).
+5. **Un effet cache les défauts** : toujours faire écouter un extrait **sans effet** avant de valider une nouvelle voix.
+6. **Jamais le filtre `chorus` de FFmpeg sur une voix** : il crée des « bips », comme un deuxième son par-dessus la voix. Pour un effet « plusieurs voix » : 2 copies fixes légèrement désaccordées (`rubberband=pitch=0.985` et `1.015`, `adelay` 22 et 35 ms, volume 0,45).
+7. **Un effet qui ajoute du gain** (basses, réverbération) commence par `volume=-3dB` et finit par `alimiter=limit=0.84:attack=5:release=60:level=false`.
+8. **Un défaut qu'on entend mais qu'on ne mesure pas** : faire écouter le même passage de 8 s à chaque étape de l'effet (brut, puis une étape de plus à chaque fois) et demander à partir de laquelle le défaut apparaît.
+9. **Compter les « sauts » d'un échantillon à l'autre ne trouve pas les clics** : sur une voix forte, ce sont les « s » et « ch ». Ce contrôle a été essayé puis retiré.
+
+## Deux voix dans une vidéo (un personnage qui se transforme)
+Dans `montage_images.json` : `"voix_sans_filtre": ["b01-b22"]` (ces blocs gardent la voix sans `"filtre_voix"`) et `"transition_voix": {"bloc": "b22", "morceau": 3, "duree": 3.0}` (dans ce bloc, la voix passe de l'une à l'autre en 3 s au début du 3e morceau ; les débuts des morceaux sont dans `debuts.json`, écrit par `voix_choisir.py`). Les images doivent suivre (portrait avant, image de la transformation au même moment). Commencer par la voix « normale » : une voix très transformée dès la 1re seconde peut faire fuir.
+
 ## Marmonnements avant et après une phrase
 La voix de synthèse ajoute parfois un « aa aa » ou un bruit juste après le dernier mot d'une prise (plus rarement avant le premier). Le nettoyage ne les enlève pas, car ils ressemblent à de la voix. `voix_choisir.py` coupe donc chaque prise 0,25 s après le dernier mot entendu et commence 0,15 s avant le premier, avec un court fondu. Sur une vidéo de 7 min, cela a retiré 20 à 30 s de marmonnements.
