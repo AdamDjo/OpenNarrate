@@ -20,7 +20,9 @@ python Outils/fabriquer.py <étape> <projet>
 | ✅ | **Validation 2 : la planche et la voix** | **Toi** | | |
 | 5 | Toute la voix | Claude | `voix` puis `choisir` puis `refaire` tant qu'il reste de vraies alertes, puis `nettoyer` | `voix/narration/bNN.wav` |
 | 6 | Toutes les autres images, et le thème des titres propre à cette vidéo | Claude + Codex | — | `images/`, `"theme_titres"` |
-| 7 | Montage | Claude | `plan` puis `montage` | `A_publier/<projet>_v1.mp4` |
+| 7 | Plan puis **écoute du son** (≈ 1 min) | Claude | `plan` puis `ecoute` | `A_publier/<projet>_v1_ECOUTE.m4a` : tout le son, sans image, avec l'heure de chaque voix et le contrôle de saturation |
+| ✅ | **Écoute** | **Toi** | | On corrige la voix AVANT le rendu : un défaut de son trouvé après un rendu complet coûte 30 à 40 min |
+| 7b | Montage, une fois le son validé | Claude | `montage` | `A_publier/<projet>_v1.mp4` |
 | 8 | Finalisation et contrôle automatique | Claude | `finir` puis `verifier` | Aperçu 720p + rapport |
 | ✅ | **Validation 3 : la vidéo (images fixes)** | **Toi** | | Tes retours, regroupés avant de relancer un montage |
 | Option | Animations : **Claude te pose toujours la question après la validation 3**, elles ne se font que si tu dis oui | Claude | `animer` puis `plan`, `montage` | `anim/clips/` : environ 2 h de calcul en plus. Sans clip, le montage utilise les images fixes |

@@ -73,7 +73,30 @@ def bruit_bord(audio, debut, fin):
 
 args = sys.argv[1:]
 vitesse = float(option(args, "--vitesse", "0.88"))
+etirement_opt = option(args, "--etirement", None)
 racine = Path(args[0])
+# Réglages par vidéo dans montage_images.json (voix qui parle naturellement vite : un gros ralenti la déforme) :
+# "vitesse_voix" (ralenti global, défaut 0,88), "debit_max_voix", "ralenti_min_voix", "etirement_voix": "rubberband"
+# (ralenti de meilleure qualité qu'atempo quand on ralentit beaucoup).
+_reglages = racine.parent.parent / "montage_images.json"
+_r = json.loads(_reglages.read_text(encoding="utf-8")) if _reglages.exists() else {}
+ETIREMENT = etirement_opt or _r.get("etirement_voix", "atempo")
+if "--vitesse" not in sys.argv:
+    vitesse = float(_r.get("vitesse_voix", vitesse))
+DEBIT_MAX = float(_r.get("debit_max_voix", DEBIT_MAX))
+ATEMPO_MIN = float(_r.get("ralenti_min_voix", ATEMPO_MIN))
+for _o, _v in (("--debit-max", "DEBIT_MAX"), ("--ralenti-min", "ATEMPO_MIN")):
+    _x = option(args, _o, None)
+    if _x:
+        globals()[_v] = float(_x)
+
+
+def ralenti(tempo):
+    if ETIREMENT == "rubberband":
+        return f"rubberband=tempo={tempo:.3f}:transients=smooth:detector=soft:window=long:pitchq=quality:formant=preserved"
+    return f"atempo={tempo:.3f}"
+
+
 noms = args[1:] or sorted(p.name for p in racine.iterdir() if (p / "plan.json").exists())
 rapport = racine / "alertes.json"
 modele = WhisperModel("small", device="cpu", compute_type="int8")
@@ -105,7 +128,9 @@ for nom in noms:
             score = difflib.SequenceMatcher(None, attendu, norme(entendu)).ratio()
             duree = len(audio) / 16000
             parole = debut_mots is not None and fin_mots is not None and fin_mots > debut_mots
-            debit = len(m["texte"].split()) / max(fin_mots - debut_mots if parole else duree, 0.1)
+            # Débit mesuré sur TOUTE la prise. Mesuré sur la seule parole, il paraît plus élevé : le ralenti devient
+            # beaucoup plus fort (0,77 au lieu de 0,88) et la voix « dérape ». Ne pas y revenir.
+            debit = len(m["texte"].split()) / max(duree, 0.1)
             tempo = vitesse * m.get("tempo", 1.0)
             if debit * tempo > DEBIT_MAX:
                 tempo = max(ATEMPO_MIN, DEBIT_MAX / debit)
@@ -118,7 +143,13 @@ for nom in noms:
                 raisons.append("speaking_rate")
             if bruit > BRUIT_BORD:
                 raisons.append("edge_noise")
-            classement = (parole, score, not raisons, bruit <= BRUIT_BORD, -abs(debit * tempo - DEBIT_CIBLE), -bruit)
+            # mots ajoutés après la fin de la phrase (la voix IA répète ou invente) : une prise propre au score un peu
+            # plus bas doit toujours passer avant
+            _ops = difflib.SequenceMatcher(None, attendu, norme(entendu)).get_opcodes()
+            trop = bool(_ops) and _ops[-1][0] in ("insert", "replace") and (_ops[-1][4] - _ops[-1][3]) - (_ops[-1][2] - _ops[-1][1]) >= 2
+            if trop:
+                raisons.append("mots_en_trop")
+            classement = (parole, not trop, score, not raisons, bruit <= BRUIT_BORD, -abs(debit * tempo - DEBIT_CIBLE), -bruit)
             if meilleur is None or classement > meilleur_classement:
                 meilleur_classement = classement
                 meilleur = {"fichier": f.name, "score": round(score, 2), "debit": round(debit, 2), "note": score, "entendu": entendu.strip(),
@@ -156,11 +187,19 @@ for nom in noms:
         if debut:
             fin += "afade=t=in:d=0.05,"
         # ralenti global × rythme de l'émotion (triste = plus lent…), volume de l'émotion, puis la pause
-        filtres.append(f"[{k}]{fin}aresample=24000,atempo={tempo:.3f},volume={vol}dB,"
+        filtres.append(f"[{k}]{fin}aresample=24000,{ralenti(tempo)},volume={vol}dB,"
                        f"apad=pad_dur={pause if k < len(liste) - 1 else 0}[a{k}]")
-    concat = "".join(f"[a{k}]" for k in range(len(liste))) + f"concat=n={len(liste)}:v=0:a=1[out]"
+    # limiteur final : une voix « chaude » + le volume d'une émotion pouvaient saturer
+    concat = ("".join(f"[a{k}]" for k in range(len(liste))) + f"concat=n={len(liste)}:v=0:a=1,"
+              "alimiter=limit=0.89:attack=3:release=50:level=false[out]")
     subprocess.run([FFMPEG, "-v", "error", "-y", *entrees, "-filter_complex", ";".join(filtres) + ";" + concat,
                     "-map", "[out]", "-ac", "1", "-ar", "24000", str(racine / f"{nom}.wav")], check=True)
+    # instant où commence chaque morceau dans le bloc assemblé (sert à la transition de voix de voix_nettoyer.py)
+    debuts, t = [], 0.0
+    for (f, pause, tempo, vol, coupe, debut) in liste:
+        debuts.append(round(t, 3))
+        t += ((coupe or lire16k(f).size / 16000) - (debut or 0)) / tempo + pause
+    (d / "debuts.json").write_text(json.dumps(debuts), encoding="utf-8")
     (racine / "_bruts" / f"{nom}.wav").unlink(missing_ok=True)  # l'ancienne version non nettoyée n'est plus valable
     print(f"=> {racine / (nom + '.wav')}", flush=True)
 

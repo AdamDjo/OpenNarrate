@@ -148,6 +148,17 @@ for s in m["sons"]:
             if (j - i) * 0.02 < 0.35 and avant >= 0.25 and (apres >= 0.25 or k + 1 == len(runs)):
                 problemes.append(f"{mm(S[s['morceau']] + s['dt'] + i * 0.02)} : bout de voix isolé dans {s['fichier'][-7:-4]} (relancer « nettoyer »)")
 
+# Voix saturée : la vidéo finale peut sembler correcte alors qu'une voix a été écrêtée avant le mixage
+for s in m.get("sons", []):
+    if not s.get("voix"):
+        continue
+    v = subprocess.run([FFMPEG, "-v", "error", "-i", str(ep / s["fichier"]), "-ac", "1", "-f", "f32le", "-"],
+                       capture_output=True).stdout
+    ecretes = int((np.abs(np.frombuffer(v, dtype=np.float32)) > 0.985).sum())
+    if ecretes:
+        problemes.append(f"{mm(S[s['morceau']] + s.get('dt', 0))} : voix saturée dans {Path(s['fichier']).stem} "
+                         f"({ecretes} échantillons écrêtés : revoir filtre_voix ou la prise, Docs/voix.md)")
+
 # Plans figés ou noirs (le fondu final est normal)
 fin = d["video"] - 3.5
 err = subprocess.run([FFMPEG, "-hide_banner", "-nostats", "-i", str(video), "-an", "-vf",
